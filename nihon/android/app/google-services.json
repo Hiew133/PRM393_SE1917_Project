@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "987009493612",
+    "project_id": "prm393-project-857e1",
+    "storage_bucket": "prm393-project-857e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:987009493612:android:629df934397d051414c649",
+        "android_client_info": {
+          "package_name": "com.example.nihon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfm8V4VfG2S7R46-wKOAYfbHstMRildNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
