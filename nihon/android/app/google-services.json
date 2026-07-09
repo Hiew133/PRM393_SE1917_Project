@@ -7,6 +7,44 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:987009493612:android:8d10df39f61f43d414c649",
+        "android_client_info": {
+          "package_name": "com.example.japanese_listening"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfm8V4VfG2S7R46-wKOAYfbHstMRildNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:987009493612:android:2fe88130d0d5a1e314c649",
+        "android_client_info": {
+          "package_name": "com.example.layout"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfm8V4VfG2S7R46-wKOAYfbHstMRildNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:987009493612:android:629df934397d051414c649",
         "android_client_info": {
           "package_name": "com.example.nihon"

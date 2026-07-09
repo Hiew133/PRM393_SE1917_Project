@@ -17,16 +17,16 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -49,21 +49,20 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDoZlN4TP9pnYAUxRGAXJLA1oAOhzRcVjg',
-    appId: '1:987009493612:web:d3b7f0db54da685214c649',
-    messagingSenderId: '987009493612',
-    projectId: 'prm393-project-857e1',
-    authDomain: 'prm393-project-857e1.firebaseapp.com',
-    storageBucket: 'prm393-project-857e1.firebasestorage.app',
-    measurementId: 'G-QLFR7YVXV5',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCfm8V4VfG2S7R46-wKOAYfbHstMRildNo',
-    appId: '1:987009493612:android:629df934397d051414c649',
+    appId: '1:987009493612:android:8d10df39f61f43d414c649',
     messagingSenderId: '987009493612',
     projectId: 'prm393-project-857e1',
     storageBucket: 'prm393-project-857e1.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyD_JhCc2VtK7FZw306ECfhFfCLygSfykCU',
+    appId: '1:987009493612:ios:acfffa4246d4197f14c649',
+    messagingSenderId: '987009493612',
+    projectId: 'prm393-project-857e1',
+    storageBucket: 'prm393-project-857e1.firebasestorage.app',
+    iosBundleId: 'com.example.japaneseListening',
   );
 }
