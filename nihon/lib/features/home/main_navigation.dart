@@ -9,22 +9,46 @@ import '../review/review_screen.dart';
 
 /// Khung chính chứa BottomNavigationBar – 5 tab như trong thiết kế.
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  const MainNavigation({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigation> createState() => MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
-  int _index = 0;
+class MainNavigationState extends State<MainNavigation> {
+  late int _index;
 
-  static const _tabs = <Widget>[
-    DashboardScreen(),
-    LessonsScreen(),
-    ReviewScreen(),
-    ProgressScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+  }
+
+  void goToTab(int index) {
+    if (index < 0 || index >= 5) return;
+    setState(() => _index = index);
+  }
+
+  static const _tabCount = 5;
+
+  late final List<Widget> _tabs = List.generate(_tabCount, (i) {
+    switch (i) {
+      case 0:
+        return DashboardScreen(onStartVocabReview: () => goToTab(2));
+      case 1:
+        return const LessonsScreen();
+      case 2:
+        return const ReviewScreen();
+      case 3:
+        return const ProgressScreen();
+      case 4:
+        return const ProfileScreen();
+      default:
+        return const SizedBox.shrink();
+    }
+  });
 
   @override
   Widget build(BuildContext context) {

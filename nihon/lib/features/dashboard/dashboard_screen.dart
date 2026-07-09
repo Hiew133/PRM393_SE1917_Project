@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
-import 'widgets/daily_goal_card.dart';
-import 'widgets/resume_card.dart';
-import 'widgets/skill_card.dart';
+import 'widgets/daily_goal_cart.dart';
+import 'widgets/resume_cart.dart';
+import 'widgets/skill_cart.dart';
 
 /// Màn 02 – Dashboard / Trang chủ.
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.onStartVocabReview});
+
+  final VoidCallback? onStartVocabReview;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +22,7 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 18),
         const DailyGoalCard(current: 30, target: 50),
         const SizedBox(height: 12),
-        const ResumeCard(),
+        ResumeCard(onContinue: onStartVocabReview),
         const SizedBox(height: 20),
         Text('Các kỹ năng', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 12),
@@ -33,7 +35,11 @@ class DashboardScreen extends StatelessWidget {
           crossAxisSpacing: 10,
           childAspectRatio: 1.35,
           children: [
-            for (final skill in kSampleSkills.take(4)) SkillCard(skill: skill),
+            for (final skill in kSampleSkills.take(4))
+              SkillCard(
+                skill: skill,
+                onTap: skill.jpLabel == '語彙' ? onStartVocabReview : null,
+              ),
           ],
         ),
         const SizedBox(height: 10),

@@ -38,9 +38,7 @@ dependencies:
   # Google Fonts – Noto Sans JP (tiếng Nhật) + DM Sans (latin)
   google_fonts: ^6.2.1
   firebase_core: ^4.11.0
-  firebase_auth: ^6.5.4
   cloud_firestore: ^6.6.0
-  firebase_storage: ^13.4.3
 
 dev_dependencies:
   flutter_test:
