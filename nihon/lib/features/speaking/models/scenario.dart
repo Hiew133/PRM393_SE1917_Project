@@ -13,6 +13,20 @@ class ExamPicture {
   });
 }
 
+/// Loại kỳ thi nói mà AI đóng vai giám khảo (format cố định từng lượt).
+enum ExamDrillType {
+  /// Không phải chế độ thi format cứng (Tự do / JPD316 hội thoại).
+  none,
+
+  /// Nhật 1 (JPD113): đọc to 30đ + 3 câu theo tranh + 1 câu tự do (4×15đ)
+  /// + tác phong 10đ. Bốc 1 đề trọn gói.
+  nihon1,
+
+  /// Nhật 2 (JPD123): đọc to 45đ + 3 câu Q&A (1 theo tranh + 2 không tranh,
+  /// 3×15đ) + tác phong 10đ. Đề đọc (A) và đề Q&A (B) BỐC ĐỘC LẬP.
+  nihon2,
+}
+
 /// Một tình huống hội thoại AI.
 class Scenario {
   final String id;
@@ -21,16 +35,16 @@ class Scenario {
   final String viLabel; // Quán cà phê
   final String aiPersona; // mô tả vai của AI để đưa vào system prompt
 
-  /// true → chế độ THI NÓI Nhật 1 (JPD113): AI là giám khảo, chạy hết format
-  /// "đọc to bài đọc + 3 câu theo tranh + 1 câu tự do" (xem
-  /// [ai_conversation_service]).
-  final bool examDrill;
+  /// Loại kỳ thi format cứng (xem [ExamDrillType]); [ExamDrillType.none] nếu
+  /// là trò chuyện tự do / hội thoại JPD316.
+  final ExamDrillType drillType;
 
-  /// Tranh của phần câu hỏi theo tranh (chỉ có ở chế độ thi Nhật 1).
+  /// Tranh của phần câu hỏi theo tranh (chỉ có ở chế độ thi Nhật 1/Nhật 2).
   final ExamPicture? examPicture;
 
-  /// Bài đọc phần READING + bản dịch (chỉ có ở chế độ thi Nhật 1). UI ghim thẻ
-  /// bài đọc từ đây — bản gốc trong máy, KHÔNG nhờ AI chép lại (tránh sai chữ).
+  /// Bài đọc phần READING + bản dịch (chỉ có ở chế độ thi Nhật 1/Nhật 2). UI
+  /// ghim thẻ bài đọc từ đây — bản gốc trong máy, KHÔNG nhờ AI chép lại
+  /// (tránh sai chữ).
   final String? readingPassage;
   final String? readingPassageVi;
 
@@ -40,11 +54,14 @@ class Scenario {
     required this.jpLabel,
     required this.viLabel,
     required this.aiPersona,
-    this.examDrill = false,
+    this.drillType = ExamDrillType.none,
     this.examPicture,
     this.readingPassage,
     this.readingPassageVi,
   });
+
+  /// Có phải chế độ THI format cứng không (AI làm giám khảo, chạy đúng lượt).
+  bool get examDrill => drillType != ExamDrillType.none;
 }
 
 const List<Scenario> kScenarios = [

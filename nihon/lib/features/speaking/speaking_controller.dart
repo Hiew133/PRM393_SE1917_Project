@@ -84,6 +84,7 @@ class SpeakingController extends ChangeNotifier {
   Scenario _scenario;
   bool _busy = false; // đang gọi AI
   bool _listening = false; // mic đang MỞ (có thể trải qua nhiều phiên STT)
+  bool _finishing = false; // vừa bấm dừng, đang đợi STT nhả kết quả cuối (~400ms)
   bool _aiSpeaking = false; // TTS đang đọc (nhân vật đang "nói")
   bool _disposed = false;
   String _transcript = ''; // các đoạn đã chốt (gom qua nhiều phiên STT)
@@ -111,6 +112,7 @@ class SpeakingController extends ChangeNotifier {
   Scenario get scenario => _scenario;
   bool get busy => _busy;
   bool get listening => _listening;
+  bool get finishing => _finishing;
   bool get aiSpeaking => _aiSpeaking;
 
   /// Toàn bộ chữ đã nói tới giờ (đoạn đã chốt + đoạn đang nhận diện live).
@@ -124,6 +126,10 @@ class SpeakingController extends ChangeNotifier {
   bool get speechAvailable => _speech.isAvailable;
 
   bool get isExamDrill => _scenario.examDrill;
+
+  /// Loại kỳ thi format cứng (Nhật 1 / Nhật 2 / none) — UI dùng để hiển thị
+  /// đúng cơ cấu điểm và nhãn.
+  ExamDrillType get drillType => _scenario.drillType;
 
   /// Bài đọc lấy THẲNG từ dữ liệu đề trong máy (không nhờ AI chép lại).
   String? get readingPassage => _scenario.readingPassage;
@@ -184,7 +190,9 @@ class SpeakingController extends ChangeNotifier {
   /// chốt phiên vì im lặng thì mở lại phiên mới, KHÔNG gửi).
   /// Bấm mic lần 2 (nút dừng): chốt toàn bộ những gì đã nói và GỬI cho AI.
   Future<void> toggleMic() async {
-    if (_busy || _examFinished || _sessionEnded) return;
+    // _finishing: đang chốt phiên nghe cũ — bấm mic lúc này sẽ mở phiên mới
+    // đè lên phiên đang đóng và làm mất chữ, nên bỏ qua.
+    if (_busy || _finishing || _examFinished || _sessionEnded) return;
     if (_listening) {
       await _finishListening();
       return;
@@ -330,27 +338,33 @@ class SpeakingController extends ChangeNotifier {
   /// vào [draft] để người dùng XEM LẠI (sửa/nói thêm/xóa) trước khi gửi.
   Future<void> _finishListening() async {
     _listening = false; // chặn _onSttSessionDone tự mở lại phiên
-    await _speech.stopListening();
-    // stop() xong plugin mới bắn kết quả cuối — đợi một nhịp để gom nốt.
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    final text = partialText.trim();
-    // Nhớ phần đuôi mới chỉ có bản partial: nếu bản CHỐT của nó về trễ hơn
-    // 400ms, onResult sẽ thay đuôi này thay vì nối lặp.
-    _draftPendingTail = _partial.trim();
-    _transcript = '';
-    _partial = '';
-    _draft = text.isEmpty ? null : text;
+    _finishing = true; // khóa nút mic trong lúc chờ gom kết quả cuối
+    notifyListeners();
+    try {
+      await _speech.stopListening();
+      // stop() xong plugin mới bắn kết quả cuối — đợi một nhịp để gom nốt.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      final text = partialText.trim();
+      // Nhớ phần đuôi mới chỉ có bản partial: nếu bản CHỐT của nó về trễ hơn
+      // 400ms, onResult sẽ thay đuôi này thay vì nối lặp.
+      _draftPendingTail = _partial.trim();
+      _transcript = '';
+      _partial = '';
+      _draft = text.isEmpty ? null : text;
+    } finally {
+      _finishing = false;
+    }
     notifyListeners();
   }
 
   /// Gửi bản nháp cho AI (bấm nút gửi). Nháp rỗng → chỉ đóng chế độ xem lại.
   Future<void> sendDraft() async {
-    if (_busy) return;
+    if (_busy || _finishing) return;
     final text = (_draft ?? '').trim();
     _draft = null;
     notifyListeners();
     if (text.isNotEmpty) {
-      await _submitUserText(text);
+      await submitUserText(text);
     }
   }
 
@@ -360,7 +374,9 @@ class SpeakingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _submitUserText(String text) async {
+  /// Gửi một câu của người học cho AI (public để test được luồng lỗi/chấm điểm).
+  @visibleForTesting
+  Future<void> submitUserText(String text) async {
     // Thêm bong bóng người dùng + bong bóng AI "đang nghĩ".
     messages.add(ChatMessage(fromUser: true, japanese: text));
     messages.add(ChatMessage.pendingAi());
@@ -394,6 +410,12 @@ class SpeakingController extends ChangeNotifier {
       _replacePendingWithAi(turn);
     } catch (e) {
       _failPending(e.toString());
+      // Gỡ luôn bong bóng user của lượt lỗi: bảng điểm thi Nhật 1 map điểm
+      // theo THỨ TỰ lượt user (examTurnScores) — giữ lại lượt lỗi (score null)
+      // sẽ chiếm slot và đẩy lệch điểm mọi lượt sau so với _answeredCount.
+      _removeLastUserMessage();
+      // Trả câu nói về draft để người dùng chỉ cần bấm gửi lại.
+      _draft = text;
     }
     _busy = false;
     notifyListeners();
@@ -424,6 +446,7 @@ class SpeakingController extends ChangeNotifier {
       _replacePendingWithAi(turn);
     } catch (e) {
       _failPending(e.toString());
+      _removeLastUserMessage(); // gỡ marker "🏁" — buổi luyện vẫn tiếp tục
     }
     _busy = false;
     notifyListeners();
@@ -435,29 +458,49 @@ class SpeakingController extends ChangeNotifier {
   /// Đọc to một câu tiếng Nhật (nút "▶ Nghe").
   Future<void> speak(String japanese) => _speech.speak(japanese);
 
-  /// Suy trạng thái thi Nhật 1 từ số lượt SV đã trả lời — nguồn chân lý cục
-  /// bộ cho UI (giá trị model tự khai chỉ giúp model bám format, không dùng).
+  /// Suy trạng thái thi từ số lượt SV đã trả lời — nguồn chân lý cục bộ cho
+  /// UI (giá trị model tự khai chỉ giúp model bám format, không dùng).
+  ///
+  /// Nhật 1 (JPD113): 0=đọc bài, 1–3=câu theo tranh, 4=câu tự do, 5=xong.
+  /// Nhật 2 (JPD123): 0=đọc bài, 1=câu theo tranh, 2–3=câu không tranh, 4=xong.
   void _syncExamState() {
-    if (!_scenario.examDrill) {
-      _examPhase = null;
-      _examProgress = null;
-      _examFinished = false;
-      return;
-    }
-    _examFinished = false;
-    if (_answeredCount <= 0) {
-      _examPhase = 'reading';
-      _examProgress = 'Đọc bài';
-    } else if (_answeredCount <= 3) {
-      _examPhase = 'picture';
-      _examProgress = 'Câu $_answeredCount/4';
-    } else if (_answeredCount == 4) {
-      _examPhase = 'free';
-      _examProgress = 'Câu 4/4';
-    } else {
-      _examPhase = 'done';
-      _examProgress = 'Hoàn thành';
-      _examFinished = true;
+    switch (_scenario.drillType) {
+      case ExamDrillType.none:
+        _examPhase = null;
+        _examProgress = null;
+        _examFinished = false;
+      case ExamDrillType.nihon1:
+        _examFinished = false;
+        if (_answeredCount <= 0) {
+          _examPhase = 'reading';
+          _examProgress = 'Đọc bài';
+        } else if (_answeredCount <= 3) {
+          _examPhase = 'picture';
+          _examProgress = 'Câu $_answeredCount/4';
+        } else if (_answeredCount == 4) {
+          _examPhase = 'free';
+          _examProgress = 'Câu 4/4';
+        } else {
+          _examPhase = 'done';
+          _examProgress = 'Hoàn thành';
+          _examFinished = true;
+        }
+      case ExamDrillType.nihon2:
+        _examFinished = false;
+        if (_answeredCount <= 0) {
+          _examPhase = 'reading';
+          _examProgress = 'Đọc bài';
+        } else if (_answeredCount == 1) {
+          _examPhase = 'picture'; // đang trả lời câu ① theo tranh
+          _examProgress = 'Câu 1/3';
+        } else if (_answeredCount <= 3) {
+          _examPhase = 'free'; // câu ②③ không tranh
+          _examProgress = 'Câu $_answeredCount/3';
+        } else {
+          _examPhase = 'done';
+          _examProgress = 'Hoàn thành';
+          _examFinished = true;
+        }
     }
   }
 
@@ -479,6 +522,12 @@ class SpeakingController extends ChangeNotifier {
     final i = messages.lastIndexWhere((m) => m.isPending);
     if (i != -1) messages.removeAt(i);
     _error = message;
+  }
+
+  /// Gỡ bong bóng user CUỐI CÙNG (lượt vừa gửi nhưng AI trả lỗi).
+  void _removeLastUserMessage() {
+    final i = messages.lastIndexWhere((m) => m.fromUser);
+    if (i != -1) messages.removeAt(i);
   }
 
   @override

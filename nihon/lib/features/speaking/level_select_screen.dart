@@ -9,11 +9,13 @@ import '../admin/speaking/exam_scenario.dart';
 import '../admin/speaking/models/admin_models.dart';
 import '../admin/speaking/student_draw_screen.dart';
 import 'models/nihon1_exam_sets.dart';
+import 'models/nihon2_exam_sets.dart';
 import 'speaking_screen.dart';
 
 /// Màn CHỌN TRÌNH ĐỘ trước khi vào hội thoại.
 ///
-/// 3 chế độ: Nhật 1 (thi JPD113), Nhật 3 (thi JPD316), Tự do.
+/// 4 chế độ: Nhật 1 (thi JPD113), Nhật 2 (thi JPD123), Nhật 3 (thi JPD316),
+/// Tự do.
 class LevelSelectScreen extends StatelessWidget {
   const LevelSelectScreen({super.key});
 
@@ -27,9 +29,28 @@ class LevelSelectScreen extends StatelessWidget {
     ));
   }
 
+  /// Repo Firestore khởi tạo LAZY — lần bấm đầu tiên dữ liệu chưa kịp về, nếu
+  /// đọc list ngay sẽ kết luận nhầm "chưa có đề". Hiện loading và đợi dữ liệu
+  /// về lần đầu. Trả về false nếu màn đã bị đóng trong lúc đợi.
+  Future<bool> _waitRepoReady(BuildContext context) async {
+    final repo = AdminRepository.instance;
+    if (repo.ready) return true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    await repo.whenReady();
+    if (!context.mounted) return false;
+    Navigator.of(context, rootNavigator: true).pop(); // đóng loading
+    return true;
+  }
+
   /// Chọn chế độ Nhật 1: mở bottom sheet bốc ngẫu nhiên / chọn đề (đề đã
   /// XUẤT BẢN trên Firestore, giảng viên soạn qua Admin).
   Future<void> _openNihon1(BuildContext context) async {
+    if (!await _waitRepoReady(context)) return;
+    if (!context.mounted) return;
     final exams = AdminRepository.instance.publishedNihon1Exams;
     if (exams.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -98,6 +119,87 @@ class LevelSelectScreen extends StatelessWidget {
     );
   }
 
+  void _startNihon2(BuildContext context, Nihon2Exam exam) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => SpeakingScreen(
+        examScenario: exam.toScenario(),
+        title: exam.title,
+      ),
+    ));
+  }
+
+  /// Chọn chế độ Nhật 2 (JPD123): bốc ngẫu nhiên / chọn đề — đề trọn gói
+  /// (bài đọc + 3 câu Q&A) như Nhật 1.
+  Future<void> _openNihon2(BuildContext context) async {
+    if (!await _waitRepoReady(context)) return;
+    if (!context.mounted) return;
+    final exams = AdminRepository.instance.publishedNihon2Exams;
+    if (exams.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Chưa có đề Nhật 2 nào được xuất bản để luyện.')));
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('THI NHẬT 2 · BỐC ĐỀ', style: AppTextStyles.overline),
+              ),
+            ),
+            ListTile(
+              leading: const Text('🎲', style: TextStyle(fontSize: 22)),
+              title: Text('Bốc ngẫu nhiên',
+                  style:
+                      AppTextStyles.latin(size: 14, weight: FontWeight.w700)),
+              subtitle: Text('Bốc 1 trong ${exams.length} đề',
+                  style: AppTextStyles.latin(
+                      size: 11, color: AppColors.textMuted)),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _startNihon2(context, exams[Random().nextInt(exams.length)]);
+              },
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final exam in exams)
+                    ListTile(
+                      leading: const Text('📄', style: TextStyle(fontSize: 18)),
+                      title: Text(exam.title,
+                          style: AppTextStyles.latin(
+                              size: 13, weight: FontWeight.w600)),
+                      subtitle: Text(
+                          '📖 đọc to 45đ · ${exam.pictureEmoji} ${exam.pictureCaption} · 💬 2 câu tự do',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.jp(
+                              size: 11, color: AppColors.textMuted)),
+                      onTap: () {
+                        Navigator.pop(sheetCtx);
+                        _startNihon2(context, exam);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _startFree(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SpeakingScreen()),
@@ -152,6 +254,8 @@ class LevelSelectScreen extends StatelessWidget {
 
   /// Chọn chế độ Nhật 3: mở bottom sheet bốc ngẫu nhiên / chọn tình huống.
   Future<void> _openJpd316(BuildContext context) async {
+    if (!await _waitRepoReady(context)) return;
+    if (!context.mounted) return;
     final list = _examSituations();
     if (list.isEmpty) {
       _noSituationSnack(context);
@@ -258,6 +362,14 @@ class LevelSelectScreen extends StatelessWidget {
               title: 'Nhật 1 · Thi nói JPD113',
               subtitle: 'Bốc đề · đọc to + hỏi theo tranh + tự do · AI giám khảo',
               onTap: () => _openNihon1(context),
+            ),
+            const SizedBox(height: 12),
+            _LevelCard(
+              emoji: '🔵',
+              color: AppColors.reading,
+              title: 'Nhật 2 · Thi nói JPD123',
+              subtitle: 'Bốc đề · đọc to 45đ + 3 câu hỏi 45đ · AI giám khảo',
+              onTap: () => _openNihon2(context),
             ),
             const SizedBox(height: 12),
             _LevelCard(

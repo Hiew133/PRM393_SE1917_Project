@@ -7,10 +7,13 @@ import 'data/admin_repository.dart';
 import 'models/admin_models.dart';
 import 'exam_structure_screen.dart';
 import 'nihon1_exam_editor_screen.dart';
+import 'nihon2_exam_editor_screen.dart';
 
-/// S01 — Danh sách đề thi Nói (Admin). Toggle 2 chuẩn đề: JPD316 / JPD113.
+/// S01 — Danh sách đề thi Nói (Admin). Toggle 3 chuẩn đề:
+/// JPD316 / JPD113 / JPD123.
 class ExamListScreen extends StatefulWidget {
-  /// Tab mở sẵn khi vào (0 = JPD316, 1 = JPD113) — trang chủ Admin truyền vào.
+  /// Tab mở sẵn khi vào (0 = JPD316, 1 = JPD113, 2 = JPD123) — trang chủ
+  /// Admin truyền vào.
   final int initialTab;
   const ExamListScreen({super.key, this.initialTab = 0});
 
@@ -21,7 +24,8 @@ class ExamListScreen extends StatefulWidget {
 class _ExamListScreenState extends State<ExamListScreen> {
   final _repo = AdminRepository.instance;
 
-  /// 0 = JPD316 (会話 + Q&A), 1 = JPD113 (Nhật 1: đọc + tranh + tự do).
+  /// 0 = JPD316 (会話 + Q&A), 1 = JPD113 (Nhật 1: đọc + tranh + tự do),
+  /// 2 = JPD123 (Nhật 2: đọc + 1 câu tranh + 2 câu không tranh).
   late int _tab = widget.initialTab;
 
   @override
@@ -57,7 +61,11 @@ class _ExamListScreenState extends State<ExamListScreen> {
                         ),
                       ),
                     Expanded(
-                        child: _tab == 0 ? _jpd316List() : _nihon1List()),
+                        child: switch (_tab) {
+                      0 => _jpd316List(),
+                      1 => _nihon1List(),
+                      _ => _nihon2List(),
+                    }),
                   ],
                 ),
                 Positioned(right: 20, bottom: 20, child: _fab()),
@@ -122,9 +130,11 @@ class _ExamListScreenState extends State<ExamListScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                    _tab == 0
-                        ? 'JPD316 · chuẩn 会話 55 + Q&A 45'
-                        : 'JPD113 · đọc 30 + 4 câu 60 + tác phong 10',
+                    switch (_tab) {
+                      0 => 'JPD316 · chuẩn 会話 55 + Q&A 45',
+                      1 => 'JPD113 · đọc 30 + 4 câu 60 + tác phong 10',
+                      _ => 'JPD123 · đọc 45 + 3 câu 45 + tác phong 10',
+                    },
                     style:
                         AppTextStyles.latin(size: 12, color: AppColors.textMuted)),
               ],
@@ -178,6 +188,8 @@ class _ExamListScreenState extends State<ExamListScreen> {
           tab(0, '会話', 'Nhật 3', AppColors.kanji),
           const SizedBox(width: 8),
           tab(1, '日本語１', 'Nhật 1', AppColors.speaking),
+          const SizedBox(width: 8),
+          tab(2, '日本語２', 'Nhật 2', AppColors.srsMaster),
         ],
       ),
     );
@@ -227,30 +239,65 @@ class _ExamListScreenState extends State<ExamListScreen> {
     );
   }
 
+  /// Danh sách đề Nhật 2 (JPD123) — cấu trúc đề trọn gói như Nhật 1.
+  Widget _nihon2List() {
+    final list = [..._repo.nihon2Exams]..sort((a, b) => a.id.compareTo(b.id));
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 90),
+      children: [
+        _sectionLabel('ĐỀ THI NÓI NHẬT 2'),
+        if (list.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text('Chưa có đề nào. Bấm "Tạo đề mới" để thêm.',
+                style:
+                    AppTextStyles.latin(size: 13, color: AppColors.textMuted)),
+          ),
+        for (final e in list)
+          _Nihon2Card(
+            emoji: e.pictureEmoji,
+            title: e.title,
+            subtitle: '📖 đọc to 45đ · 🖼 1 câu tranh · 💬 2 câu không tranh',
+            published: e.published,
+            onEdit: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => Nihon2ExamEditorScreen(exam: e))),
+          ),
+      ],
+    );
+  }
+
   Widget _sectionLabel(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Text(text, style: AppTextStyles.overline),
       );
 
-  /// Form TẠO ĐỀ dùng chung cho cả 2 chuẩn: hỏi tên đề → tạo đề (nháp) → mở
-  /// editor tương ứng (S02 cấu trúc cho JPD316, editor phẳng cho Nhật 1).
+  /// Form TẠO ĐỀ dùng chung cho cả 3 chuẩn: hỏi tên đề → tạo đề (nháp) → mở
+  /// editor tương ứng (S02 cấu trúc cho JPD316, editor phẳng cho Nhật 1/2).
   Future<void> _createExam() async {
-    final isNihon1 = _tab == 1;
-    final title = await _askExamTitle(
-        isNihon1 ? 'VD: Đề 6 · Đọc … — Tranh …' : 'VD: Thi cuối kỳ — Đề C');
+    final title = await _askExamTitle(switch (_tab) {
+      1 => 'VD: Đề 6 · Đọc … — Tranh …',
+      2 => 'VD: Đề 4 · Đọc … — Tranh …',
+      _ => 'VD: Thi cuối kỳ — Đề C',
+    });
     if (title == null || !mounted) return; // huỷ
-    if (isNihon1) {
-      final exam = await _repo.createNihon1Exam(title: title);
-      if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => Nihon1ExamEditorScreen(exam: exam)));
-    } else {
-      final exam = await _repo.createExam(
-          title: title.isEmpty ? 'Đề JPD316 mới' : title,
-          lessonRange: 'Bài 1~5');
-      if (!mounted) return;
-      Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ExamStructureScreen(exam: exam)));
+    switch (_tab) {
+      case 1:
+        final exam = await _repo.createNihon1Exam(title: title);
+        if (!mounted) return;
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => Nihon1ExamEditorScreen(exam: exam)));
+      case 2:
+        final exam = await _repo.createNihon2Exam(title: title);
+        if (!mounted) return;
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => Nihon2ExamEditorScreen(exam: exam)));
+      default:
+        final exam = await _repo.createExam(
+            title: title.isEmpty ? 'Đề JPD316 mới' : title,
+            lessonRange: 'Bài 1~5');
+        if (!mounted) return;
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => ExamStructureScreen(exam: exam)));
     }
   }
 
@@ -307,6 +354,90 @@ class _ExamListScreenState extends State<ExamListScreen> {
                       weight: FontWeight.w700,
                       color: Colors.white)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Thẻ đề Nhật 2 (JPD123) trong danh sách admin — dùng chung cho đề đọc (A)
+/// và đề Q&A (B).
+class _Nihon2Card extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final bool published;
+  final VoidCallback onEdit;
+  const _Nihon2Card({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.published,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE8EFFB),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.latin(
+                              size: 14, weight: FontWeight.w700)),
+                      const SizedBox(height: 3),
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.latin(
+                              size: 11, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: published
+                          ? const Color(0xFFF0FDF4)
+                          : AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(7)),
+                  child: Text(published ? 'Xuất bản' : 'Nháp',
+                      style: AppTextStyles.latin(
+                          size: 10,
+                          weight: FontWeight.w700,
+                          color: published
+                              ? AppColors.speaking
+                              : AppColors.listening)),
+                ),
+              ],
+            ),
           ),
         ),
       ),

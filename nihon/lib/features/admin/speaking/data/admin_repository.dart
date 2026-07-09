@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../speaking/models/nihon1_exam_sets.dart';
+import '../../../speaking/models/nihon2_exam_sets.dart';
 import '../models/admin_models.dart';
 
 /// Kho dữ liệu admin trên **Cloud Firestore**.
@@ -36,9 +39,36 @@ class AdminRepository extends ChangeNotifier {
   final List<ConversationSituation> situations = [];
   final List<StudentScore> scores = [];
   final List<Nihon1Exam> nihon1Exams = []; // đề thi Nhật 1 (JPD113)
+  final List<Nihon2Exam> nihon2Exams = []; // đề thi Nhật 2 (JPD123)
 
   bool ready = false;
   String? error;
+
+  // Snapshot ĐẦU TIÊN của từng collection đã về chưa — [ready] chỉ bật khi đủ
+  // cả 6 (trước đây chỉ theo `exams` nên các list khác có thể vẫn rỗng).
+  final Set<String> _loadedCols = {};
+  static const int _kColCount = 6;
+  void _markLoaded(String col) {
+    _loadedCols.add(col);
+    ready = _loadedCols.length >= _kColCount;
+  }
+
+  /// Hoàn thành khi dữ liệu đã về lần đầu (repo khởi tạo LAZY nên ngay sau lần
+  /// truy cập đầu tiên các list còn rỗng vài trăm ms — đợi ở đây trước khi kết
+  /// luận "chưa có đề"). Cũng hoàn thành khi gặp lỗi hoặc quá [timeout] để UI
+  /// không treo loading vô hạn.
+  Future<void> whenReady({Duration timeout = const Duration(seconds: 10)}) {
+    if (ready || error != null) return Future.value();
+    final done = Completer<void>();
+    void check() {
+      if ((ready || error != null) && !done.isCompleted) done.complete();
+    }
+
+    addListener(check);
+    return done.future
+        .timeout(timeout, onTimeout: () {})
+        .whenComplete(() => removeListener(check));
+  }
 
   CollectionReference<Map<String, dynamic>> get _examsCol =>
       _root.collection('exams');
@@ -50,6 +80,8 @@ class AdminRepository extends ChangeNotifier {
       _root.collection('scores');
   CollectionReference<Map<String, dynamic>> get _nihon1Col =>
       _root.collection('nihon1_exams');
+  CollectionReference<Map<String, dynamic>> get _nihon2Col =>
+      _root.collection('nihon2_exams');
 
   static const List<RubricCriterion> rubric = [
     RubricCriterion(
@@ -112,13 +144,14 @@ class AdminRepository extends ChangeNotifier {
       exams
         ..clear()
         ..addAll(snap.docs.map((d) => Exam.fromMap(d.id, d.data())));
-      ready = true;
+      _markLoaded('exams');
       notifyListeners();
     }, onError: _onErr);
     _questionsCol.snapshots().listen((snap) {
       questions
         ..clear()
         ..addAll(snap.docs.map((d) => QaQuestion.fromMap(d.id, d.data())));
+      _markLoaded('questions');
       notifyListeners();
     }, onError: _onErr);
     _situationsCol.snapshots().listen((snap) {
@@ -126,18 +159,28 @@ class AdminRepository extends ChangeNotifier {
         ..clear()
         ..addAll(
             snap.docs.map((d) => ConversationSituation.fromMap(d.id, d.data())));
+      _markLoaded('situations');
       notifyListeners();
     }, onError: _onErr);
     _scoresCol.snapshots().listen((snap) {
       scores
         ..clear()
         ..addAll(snap.docs.map((d) => StudentScore.fromMap(d.id, d.data())));
+      _markLoaded('scores');
       notifyListeners();
     }, onError: _onErr);
     _nihon1Col.snapshots().listen((snap) {
       nihon1Exams
         ..clear()
         ..addAll(snap.docs.map((d) => Nihon1Exam.fromMap(d.id, d.data())));
+      _markLoaded('nihon1');
+      notifyListeners();
+    }, onError: _onErr);
+    _nihon2Col.snapshots().listen((snap) {
+      nihon2Exams
+        ..clear()
+        ..addAll(snap.docs.map((d) => Nihon2Exam.fromMap(d.id, d.data())));
+      _markLoaded('nihon2');
       notifyListeners();
     }, onError: _onErr);
   }
@@ -170,6 +213,19 @@ class AdminRepository extends ChangeNotifier {
         b.set(_nihon1Col.doc(s.id), Nihon1Exam.fromSet(s).toMap());
       }
       await b.commit();
+    }
+
+    // 1c) Seed đề Nhật 2 (JPD123) — chỉ khi collection còn rỗng. Nhân tiện
+    //     dọn 2 collection tạm của bản thiết kế cũ (đề đọc/Q&A tách đôi) nếu
+    //     còn sót lại từ lần chạy trước.
+    if ((await _nihon2Col.get()).docs.isEmpty) {
+      final b = _db.batch();
+      for (final e in buildNihon2ExamSeeds()) {
+        b.set(_nihon2Col.doc(e.id), e.toMap());
+      }
+      await b.commit();
+      await _wipe(_root.collection('nihon2_readings'));
+      await _wipe(_root.collection('nihon2_qa'));
     }
 
     if (ver >= _seedVersion) return; // đã seed/migrate theo định dạng mới
@@ -290,6 +346,30 @@ class AdminRepository extends ChangeNotifier {
 
   Future<void> deleteNihon1Exam(Nihon1Exam e) =>
       _nihon1Col.doc(e.id).delete();
+
+  // ── ĐỀ NHẬT 2 (JPD123) ─────────────────────────────────
+  /// Các đề Nhật 2 đã xuất bản (học viên bốc được).
+  List<Nihon2Exam> get publishedNihon2Exams =>
+      nihon2Exams.where((e) => e.published).toList()
+        ..sort((a, b) => a.id.compareTo(b.id));
+
+  Future<Nihon2Exam> createNihon2Exam({required String title}) async {
+    final id = 'n2_${DateTime.now().millisecondsSinceEpoch}';
+    final exam = Nihon2Exam(
+      id: id,
+      title: title.trim().isEmpty ? 'Đề Nhật 2 mới' : title.trim(),
+      updatedLabel: 'vừa tạo',
+    );
+    await _nihon2Col.doc(id).set(exam.toMap());
+    return exam;
+  }
+
+  Future<void> saveNihon2Exam(Nihon2Exam e) async {
+    e.updatedLabel = 'vừa cập nhật';
+    await _nihon2Col.doc(e.id).set(e.toMap());
+  }
+
+  Future<void> deleteNihon2Exam(Nihon2Exam e) => _nihon2Col.doc(e.id).delete();
 
   // ── CÂU HỎI Q&A ────────────────────────────────────────
   /// Tạo doc id mới cho câu hỏi của một đề.

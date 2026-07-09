@@ -28,6 +28,8 @@ class SpeakingAdminScreen extends StatelessWidget {
             final jpd316 = repo.exams.length;
             final nihon1 = repo.nihon1Exams.length;
             final nihon1Pub = repo.publishedNihon1Exams.length;
+            final nihon2 = repo.nihon2Exams.length;
+            final nihon2Pub = repo.publishedNihon2Exams.length;
             return Column(
               children: [
                 _header(context),
@@ -62,6 +64,17 @@ class SpeakingAdminScreen extends StatelessWidget {
                             'Soạn bài đọc + tranh + câu hỏi theo tranh + câu tự do',
                         stat: '$nihon1 đề · $nihon1Pub xuất bản',
                         onTap: () => _openList(context, 1),
+                      ),
+                      const SizedBox(height: 12),
+                      _StandardCard(
+                        emoji: '🔵',
+                        jp: '日本語２',
+                        color: AppColors.srsMaster,
+                        title: 'Đề thi nói Nhật 2 · JPD123',
+                        subtitle:
+                            'Soạn bài đọc + tranh + 1 câu theo tranh + 2 câu tự do',
+                        stat: '$nihon2 đề · $nihon2Pub xuất bản',
+                        onTap: () => _openList(context, 2),
                       ),
                     ],
                   ),

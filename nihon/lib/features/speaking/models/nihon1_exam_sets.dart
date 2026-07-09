@@ -209,7 +209,7 @@ Scenario buildNihon1ScenarioRaw({
     emoji: '🟢',
     jpLabel: '日本語１',
     viLabel: title,
-    examDrill: true,
+    drillType: ExamDrillType.nihon1,
     examPicture: picture,
     readingPassage: passage,
     readingPassageVi: passageVi,

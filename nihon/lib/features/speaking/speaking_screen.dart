@@ -8,6 +8,8 @@ import 'models/scenario.dart';
 import 'speaking_controller.dart';
 import 'widgets/ai_character.dart';
 import 'widgets/chat_bubble.dart';
+import 'widgets/exam_cards.dart';
+import 'widgets/speaking_bars.dart';
 import 'widgets/voice_input_bar.dart';
 
 /// Màn 07 – Luyện nói (hội thoại với AI).
@@ -20,7 +22,14 @@ import 'widgets/voice_input_bar.dart';
 class SpeakingScreen extends StatefulWidget {
   final Scenario? examScenario;
   final String? title;
-  const SpeakingScreen({super.key, this.examScenario, this.title});
+
+  /// Controller tiêm sẵn (widget test dùng để thay AI/mic bằng bản giả).
+  /// Bình thường để null — màn tự tạo controller thật.
+  @visibleForTesting
+  final SpeakingController? controller;
+
+  const SpeakingScreen(
+      {super.key, this.examScenario, this.title, this.controller});
 
   bool get isExam => examScenario != null;
 
@@ -36,8 +45,12 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   /// "có góp ý mới" trên nút mở script.
   int _seenCount = 0;
 
-  /// Chế độ thi Nhật 1 (giám khảo: đọc to + 3 câu tranh + 1 câu tự do).
+  /// Chế độ thi format cứng (Nhật 1 / Nhật 2 — AI là giám khảo).
   bool get _isExamDrill => widget.examScenario?.examDrill ?? false;
+
+  /// Nhật 2 (JPD123): đọc 45đ + 3 câu Q&A; Nhật 1 (JPD113): đọc 30đ + 4 câu.
+  bool get _isNihon2 =>
+      widget.examScenario?.drillType == ExamDrillType.nihon2;
 
   /// Chế độ thi Nhật 3 (JPD316, hội thoại theo đề giảng viên).
   bool get _isJpd316 => widget.isExam && !_isExamDrill;
@@ -57,7 +70,8 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = SpeakingController(initialScenario: widget.examScenario);
+    _controller = widget.controller ??
+        SpeakingController(initialScenario: widget.examScenario);
     _controller.addListener(_onChange);
     _controller.init();
   }
@@ -94,23 +108,43 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
             return Column(
               children: [
                 _header(),
-                if (_showReadingCard) _readingCard(),
-                if (_showPictureCard) _pictureCard(),
+                if (_showReadingCard)
+                  ExamReadingCard(
+                    jp: _controller.readingPassage ?? '',
+                    vi: _controller.readingPassageVi,
+                    points: _isNihon2 ? 45 : 30,
+                  ),
+                if (_showPictureCard)
+                  ExamPictureCard(picture: widget.examScenario!.examPicture!),
                 if (_isExamDrill && _controller.examFinished)
-                  _examResultCard(),
+                  ExamResultCard(
+                    scores: _controller.examTurnScores,
+                    readingMax: _isNihon2 ? 45 : 30,
+                    questionCount: _isNihon2 ? 3 : 4,
+                  ),
                 if (_isExamDrill && _controller.examProgress != null)
-                  _examProgressBar(),
-                if (_isJpd316) _activeExamBanner(),
-                if (_controller.error != null) _errorBanner(_controller.error!),
+                  ExamProgressChip(
+                    label: _controller.examProgress ?? '',
+                    done: _controller.examFinished,
+                  ),
+                if (_isJpd316)
+                  ActiveExamBanner(
+                    jpLabel: _controller.scenario.jpLabel,
+                    viLabel: _controller.scenario.viLabel,
+                  ),
+                if (_controller.error != null)
+                  ErrorBanner(message: _controller.error!),
                 Expanded(child: _stage()),
                 if (_isExamDrill && _controller.examFinished)
-                  _examDoneBar()
+                  ExamDoneBar(onBack: () => Navigator.maybePop(context))
                 else if (_controller.sessionEnded)
-                  _sessionEndedBar()
+                  SessionEndedBar(onRestart: _controller.restart)
                 else
                   VoiceInputBar(
                     listening: _controller.listening,
-                    busy: _controller.busy,
+                    // finishing: đang chốt câu (~400ms) — khóa nút như lúc bận
+                    // để bấm nhanh không mở phiên mới đè lên phiên đang đóng.
+                    busy: _controller.busy || _controller.finishing,
                     partialText: _controller.partialText,
                     draftText: _controller.draft,
                     onMicTap: _controller.toggleMic,
@@ -132,12 +166,19 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('日本語１ thi nói · AI là giám khảo',
+          Text(
+              _isNihon2
+                  ? '日本語２ thi nói · AI là giám khảo'
+                  : '日本語１ thi nói · AI là giám khảo',
               style: AppTextStyles.jp(
                   size: 13,
                   weight: FontWeight.w700,
                   color: AppColors.speaking)),
-          Text(widget.title ?? 'Đọc to bài (30đ) + 4 câu hỏi (60đ)',
+          Text(
+              widget.title ??
+                  (_isNihon2
+                      ? 'Đọc to bài (45đ) + 3 câu hỏi (45đ)'
+                      : 'Đọc to bài (30đ) + 4 câu hỏi (60đ)'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style:
@@ -232,6 +273,9 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     final c = _controller;
     if (c.listening) {
       return (text: 'Đang nghe bạn nói… 🎤', color: AppColors.vocab);
+    }
+    if (c.finishing) {
+      return (text: 'Đang chốt câu… ✍️', color: AppColors.brand);
     }
     if (c.draft != null) {
       return (text: 'Xem lại câu rồi bấm gửi ✏️', color: AppColors.brand);
@@ -488,365 +532,19 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     });
   }
 
-  /// Thẻ "bài đọc" ghim trên cùng (chế độ thi Nhật 1).
-  Widget _readingCard() {
-    final jp = _controller.readingPassage ?? '';
-    final vi = _controller.readingPassageVi;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF8F2),
-        border: Border.all(color: AppColors.speaking.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('📖', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text('BÀI ĐỌC · よんでください',
-                    style: AppTextStyles.overline
-                        .copyWith(color: AppColors.speaking)),
-              ),
-              Text('30đ',
-                  style: AppTextStyles.latin(
-                      size: 10,
-                      weight: FontWeight.w800,
-                      color: AppColors.speaking)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('Bấm mic rồi ĐỌC TO đoạn văn — chỉ cần đọc đúng, không phải trả lời.',
-              style: AppTextStyles.latin(
-                  size: 10.5, color: AppColors.textMuted)),
-          const SizedBox(height: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 150),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(jp,
-                      style: AppTextStyles.jp(
-                          size: 15, height: 1.6, weight: FontWeight.w600)),
-                  if (vi != null && vi.trim().isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(vi,
-                        style: AppTextStyles.latin(
-                            size: 12,
-                            height: 1.45,
-                            color: AppColors.textMuted)),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Thẻ TRANH ghim trên cùng (phần TALKING WITH PICTURES của thi Nhật 1) —
-  /// thay chỗ thẻ bài đọc; emoji to + các gợi ý ghi trên tranh để SV trả lời.
-  Widget _pictureCard() {
-    final pic = widget.examScenario!.examPicture!;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF5FD),
-        border: Border.all(
-            color: AppColors.srsMaster.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('🖼️', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text('TRANH · えを　みて　こたえてください',
-                    style: AppTextStyles.overline
-                        .copyWith(color: AppColors.srsMaster)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // "Tranh" — emoji to trong khung.
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                      color: AppColors.srsMaster.withValues(alpha: 0.3)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(pic.emoji,
-                      style: const TextStyle(fontSize: 34)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pic.caption,
-                        style: AppTextStyles.jp(
-                            size: 15, weight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final h in pic.hints)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(
-                                  color: AppColors.border),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(h,
-                                style: AppTextStyles.jp(
-                                    size: 12, weight: FontWeight.w600)),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Thẻ KẾT QUẢ ước lượng sau khi thi Nhật 1 xong — tính từ điểm AI chấm
-  /// từng lượt, quy về đúng cơ cấu đề: ĐỌC 30đ + 4 câu × 15đ + tác phong 10đ
-  /// (tác phong ước theo trung bình các lượt vì AI không thấy tác phong thật).
-  Widget _examResultCard() {
-    final scores = _controller.examTurnScores;
-    int? at(int i) => i < scores.length ? scores[i] : null;
 
-    final graded = [for (var i = 0; i < 5; i++) at(i)].whereType<int>();
-    final avg = graded.isEmpty
-        ? 0
-        : graded.reduce((a, b) => a + b) / graded.length;
 
-    final reading = ((at(0) ?? 0) * 0.30).round(); // /30
-    final qs = [for (var i = 1; i <= 4; i++) ((at(i) ?? 0) * 0.15).round()];
-    final manner = (avg * 0.10).round(); // /10
-    final total = reading + qs.reduce((a, b) => a + b) + manner;
 
-    Widget chip(String label, int pts, int max) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border:
-              Border.all(color: AppColors.speaking.withValues(alpha: 0.35)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label,
-                style: AppTextStyles.latin(
-                    size: 11, color: AppColors.textMuted)),
-            const SizedBox(width: 5),
-            Text('$pts/$max',
-                style: AppTextStyles.latin(
-                    size: 11.5,
-                    weight: FontWeight.w800,
-                    color: AppColors.speaking)),
-          ],
-        ),
-      );
-    }
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF8F2),
-        border: Border.all(color: AppColors.speaking.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('🏆', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text('KẾT QUẢ (ước lượng)',
-                    style: AppTextStyles.overline
-                        .copyWith(color: AppColors.speaking)),
-              ),
-              Text('$total',
-                  style: AppTextStyles.latin(
-                      size: 20,
-                      weight: FontWeight.w800,
-                      color: AppColors.speaking)),
-              Text('/100',
-                  style: AppTextStyles.latin(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: AppColors.textMuted)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              chip('Đọc bài', reading, 30),
-              for (var i = 0; i < 4; i++) chip('Câu ${i + 1}', qs[i], 15),
-              chip('Tác phong', manner, 10),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'AI chấm ước lượng qua nhận diện giọng nói — điểm tham khảo để ôn tập.',
-            style: AppTextStyles.latin(size: 10, color: AppColors.textFaint),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Thanh thay cho mic khi đã kết thúc buổi luyện (chế độ Tự do / JPD316).
-  Widget _sessionEndedBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.flag, color: AppColors.speaking, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Đã kết thúc buổi luyện.',
-                style: AppTextStyles.latin(size: 13, weight: FontWeight.w600)),
-          ),
-          TextButton.icon(
-            onPressed: _controller.restart,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Luyện lại'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.speaking),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Chip tiến độ "Câu x/4" (chế độ thi Nhật 1).
-  Widget _examProgressBar() {
-    final done = _controller.examFinished;
-    final color = done ? AppColors.speaking : AppColors.srsMaster;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                Icon(done ? Icons.check_circle : Icons.timelapse,
-                    size: 13, color: color),
-                const SizedBox(width: 5),
-                Text(_controller.examProgress ?? '',
-                    style: AppTextStyles.latin(
-                        size: 11, weight: FontWeight.w700, color: color)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Thanh thay cho mic khi đã thi xong (chế độ thi Nhật 1).
-  Widget _examDoneBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: AppColors.speaking, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Đã hoàn thành phần thi.',
-                style: AppTextStyles.latin(
-                    size: 13, weight: FontWeight.w600)),
-          ),
-          TextButton.icon(
-            onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Bốc đề khác'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.speaking),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _activeExamBanner() {
-    final s = _controller.scenario;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F0FF),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          const Text('🎓', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              'Đang luyện theo đề · ${s.jpLabel} — ${s.viLabel}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.latin(
-                  size: 11,
-                  weight: FontWeight.w600,
-                  color: const Color(0xFF7B3FA8)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
+
 
   Widget _chatList() {
     return ListView.separated(
@@ -864,24 +562,5 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     );
   }
 
-  Widget _errorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      // Giới hạn chiều cao để thông báo lỗi (dù dài) không bao giờ làm tràn layout.
-      constraints: const BoxConstraints(maxHeight: 120),
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEE2E2),
-        border: Border.all(color: const Color(0xFFFECACA)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: SingleChildScrollView(
-        child: Text(
-          message,
-          style: AppTextStyles.latin(size: 12, color: AppColors.vocab),
-        ),
-      ),
-    );
-  }
+
 }
