@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../speaking/speaking_screen.dart';
-import '../data/admin_repository.dart';
-import '../exam_scenario.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'exam_scenario.dart';
+import 'models/admin_models.dart';
 
 /// S07 — Mở đề phía SV: hiện tình huống 会話 của đề (mỗi đề 1 tình huống, biến
 /// thể lấy từ nhiều đề), xem 場面 + 文法 và đếm ngược thời gian chuẩn bị tại chỗ.

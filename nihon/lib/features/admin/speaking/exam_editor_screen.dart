@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../data/admin_repository.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'models/admin_models.dart';
 
 /// Soạn đề mới hoặc sửa thông tin đề. Truyền [exam] = null để tạo mới.
 class ExamEditorScreen extends StatefulWidget {

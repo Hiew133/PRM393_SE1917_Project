@@ -1,4 +1,4 @@
-import '../speaking/models/scenario.dart';
+import '../../speaking/models/scenario.dart';
 import 'models/admin_models.dart';
 
 /// Dựng [Scenario] cho màn Luyện nói từ một tình huống 会話 ([ConversationSituation]).

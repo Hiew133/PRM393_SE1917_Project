@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../admin/data/admin_repository.dart';
-import '../admin/exam_scenario.dart';
-import '../admin/models/admin_models.dart';
-import '../admin/screens/student_draw_screen.dart';
+import '../admin/speaking/data/admin_repository.dart';
+import '../admin/speaking/exam_scenario.dart';
+import '../admin/speaking/models/admin_models.dart';
+import '../admin/speaking/student_draw_screen.dart';
 import 'models/nihon1_exam_sets.dart';
 import 'speaking_screen.dart';
 

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../data/admin_repository.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'models/admin_models.dart';
 
 /// Soạn / sửa một tình huống 会話 (場面 SV + 場面 GV + 文法 + 会話 mẫu có chỗ
 /// trống ＿＿). Lưu Firestore qua [AdminRepository.saveSituation].

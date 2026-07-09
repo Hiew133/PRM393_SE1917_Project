@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../data/admin_repository.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'models/admin_models.dart';
 import 'situation_detail_screen.dart';
 
 /// S03 — Tình huống 会話 của 1 đề (mỗi đề 1 tình huống, dựa 1 mẫu gốc).

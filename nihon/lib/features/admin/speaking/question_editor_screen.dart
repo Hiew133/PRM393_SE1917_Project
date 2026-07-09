@@ -3,8 +3,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../data/admin_repository.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'models/admin_models.dart';
 
 /// Soạn / sửa một câu hỏi Q&A của một đề. [question] = null để thêm mới.
 class QuestionEditorScreen extends StatefulWidget {

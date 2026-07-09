@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../data/admin_repository.dart';
+import 'data/admin_repository.dart';
 import 'exam_list_screen.dart';
 
 /// Hub quản lý phần NÓI (話す) trong Admin — chọn chuẩn đề: JPD316 / JPD113.

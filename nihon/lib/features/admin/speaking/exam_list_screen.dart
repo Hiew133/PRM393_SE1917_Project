@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../speaking/models/nihon1_exam_sets.dart';
-import '../data/admin_repository.dart';
-import '../models/admin_models.dart';
+import 'data/admin_repository.dart';
+import 'models/admin_models.dart';
 import 'exam_structure_screen.dart';
 import 'nihon1_exam_editor_screen.dart';
 
@@ -77,6 +77,19 @@ class _ExamListScreenState extends State<ExamListScreen> {
       ),
       child: Row(
         children: [
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(10)),
+              child:
+                  const Icon(Icons.chevron_left, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

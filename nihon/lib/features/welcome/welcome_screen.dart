@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../admin/admin_gate_screen.dart';
+import '../admin/admin_home_screen.dart';
 import '../home/main_navigation.dart';
 
 /// Màn 01 – Welcome / Onboarding.
@@ -123,7 +123,7 @@ class WelcomeScreen extends StatelessWidget {
                         GestureDetector(
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (_) => const AdminGateScreen()),
+                                builder: (_) => const AdminHomeScreen()),
                           ),
                           child: Container(
                             padding: const EdgeInsets.symmetric(

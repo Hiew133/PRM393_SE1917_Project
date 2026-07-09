@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../welcome/welcome_screen.dart';
-import '../data/admin_repository.dart';
-import 'speaking_admin_screen.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
+import '../welcome/welcome_screen.dart';
+import 'speaking/data/admin_repository.dart';
+import 'speaking/speaking_admin_screen.dart';
 
 /// Trang chủ Admin cấp APP — bày cả 5 kỹ năng như Dashboard học viên, nhưng
 /// hiện CHỈ 話す (Nói) là mở; 4 kỹ năng còn lại để placeholder "sắp có".
-/// Vào từ cổng PIN [AdminGateScreen]. Chạm 話す → [SpeakingAdminScreen].
+/// Vào từ nút "Giảng viên" ở màn Welcome. Chạm 話す → [SpeakingAdminScreen].
+/// (TODO: sau này chặn bằng phân quyền role khi đăng nhập thay cho mã PIN cũ.)
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
 

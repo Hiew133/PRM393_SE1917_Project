@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../speaking/models/nihon1_exam_sets.dart';
+import '../../../speaking/models/nihon1_exam_sets.dart';
 import '../models/admin_models.dart';
 
 /// Kho dữ liệu admin trên **Cloud Firestore**.

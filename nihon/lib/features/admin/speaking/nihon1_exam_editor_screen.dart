@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../speaking/models/nihon1_exam_sets.dart';
-import '../data/admin_repository.dart';
+import 'data/admin_repository.dart';
 
 /// Soạn / sửa một đề thi Nhật 1 (JPD113): bài đọc + tranh + 3 câu theo tranh +
 /// 1 câu tự do. Đề đã được tạo sẵn (list screen gọi createNihon1Exam trước),
