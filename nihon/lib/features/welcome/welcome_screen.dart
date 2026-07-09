@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../admin/admin_gate_screen.dart';
 import '../home/main_navigation.dart';
 
 /// Màn 01 – Welcome / Onboarding.
@@ -20,97 +21,139 @@ class WelcomeScreen extends StatelessWidget {
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.welcomeBackground),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 32),
-            child: Column(
-              children: [
-                const Spacer(),
-                // Logo minh hoạ
-                Container(
-                  width: 210,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.38),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: AppColors.textPrimary.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '桜',
-                    style: AppTextStyles.jp(
-                      size: 80,
-                      weight: FontWeight.w900,
-                      color: AppColors.brand,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                // Logo + tên
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _LogoBadge(),
-                    const SizedBox(width: 10),
-                    Text(
-                      'さくら',
-                      style: AppTextStyles.jp(
-                        size: 34,
-                        weight: FontWeight.w700,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Học tiếng Nhật mỗi ngày\ntheo phương pháp SRS khoa học',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.latin(
-                    size: 14,
-                    color: AppColors.textSecondary,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                // Feature chips
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: const [
-                    _FeatureChip('✓ 15,000+ từ vựng'),
-                    _FeatureChip('✓ 2,136 Kanji'),
-                    _FeatureChip('✓ JLPT N5 → N1'),
-                  ],
-                ),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: () => _start(context),
-                  child: const Text('Bắt đầu miễn phí'),
-                ),
-                const SizedBox(height: 16),
-                RichText(
-                  text: TextSpan(
-                    style: AppTextStyles.latin(
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    children: [
-                      const TextSpan(text: 'Đã có tài khoản? '),
-                      TextSpan(
-                        text: 'Đăng nhập',
-                        style: AppTextStyles.latin(
-                          size: 14,
-                          weight: FontWeight.w700,
-                          color: AppColors.brandDark,
+          // Màn thấp (emulator/điện thoại nhỏ) thì cho cuộn để không tràn;
+          // màn đủ cao thì Spacer vẫn căn giữa như thiết kế.
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo minh hoạ
+                        Container(
+                          width: 210,
+                          height: 170,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.38),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color:
+                                  AppColors.textPrimary.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '桜',
+                            style: AppTextStyles.jp(
+                              size: 80,
+                              weight: FontWeight.w900,
+                              color: AppColors.brand,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 28),
+                        // Logo + tên
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _LogoBadge(),
+                            const SizedBox(width: 10),
+                            Text(
+                              'さくら',
+                              style: AppTextStyles.jp(
+                                size: 34,
+                                weight: FontWeight.w700,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Học tiếng Nhật mỗi ngày\ntheo phương pháp SRS khoa học',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.latin(
+                            size: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        // Feature chips
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: const [
+                            _FeatureChip('✓ 15,000+ từ vựng'),
+                            _FeatureChip('✓ 2,136 Kanji'),
+                            _FeatureChip('✓ JLPT N5 → N1'),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        ElevatedButton(
+                          onPressed: () => _start(context),
+                          child: const Text('Bắt đầu miễn phí'),
+                        ),
+                        const SizedBox(height: 16),
+                        RichText(
+                          text: TextSpan(
+                            style: AppTextStyles.latin(
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                            children: [
+                              const TextSpan(text: 'Đã có tài khoản? '),
+                              TextSpan(
+                                text: 'Đăng nhập',
+                                style: AppTextStyles.latin(
+                                  size: 14,
+                                  weight: FontWeight.w700,
+                                  color: AppColors.brandDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const AdminGateScreen()),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.6)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.school_outlined,
+                                    size: 16, color: AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text('Vào trang Giảng viên (Admin)',
+                                    style: AppTextStyles.latin(
+                                        size: 13,
+                                        weight: FontWeight.w600,
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
