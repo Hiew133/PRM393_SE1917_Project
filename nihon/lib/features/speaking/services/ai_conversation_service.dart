@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/config/api_config.dart';
 import '../models/scenario.dart';
@@ -159,6 +160,7 @@ class AiConversationService {
         'Hãy thử lại sau vài giây.',
       );
     }
+    debugPrint('AI raw error: $lastErr');
     final s = lastErr.toString().toLowerCase();
     // Hết credit trả trước (gói prepaid của Gemini API).
     if (s.contains('prepayment') || s.contains('credits are depleted')) {
