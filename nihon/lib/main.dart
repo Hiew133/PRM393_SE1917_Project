@@ -26,9 +26,14 @@ void main() async {
     // tokens là mọi máy dev chạy được, không cần add token từng máy.
     // Khi lên production: đổi androidProvider → playIntegrity, webProvider →
     // reCAPTCHA site key thật.
+    // Bản APK "dùng thử" gửi tay (sideload) không qua Google Play nên
+    // Play Integrity sẽ fail → build với
+    //   flutter build apk --release --dart-define=USE_DEBUG_APPCHECK=true
+    // để bản release đó vẫn dùng debug token chung. Bản phát hành chính
+    // thức lên Play Store thì KHÔNG bật cờ này.
     try {
       await FirebaseAppCheck.instance.activate(
-        providerAndroid: kReleaseMode
+        providerAndroid: (kReleaseMode && !_useDebugAppCheck)
             ? const AndroidPlayIntegrityProvider()
             : const AndroidDebugProvider(debugToken: _androidDebugToken),
         // Web bắt buộc truyền provider; ở chế độ debug (bật cờ trong
@@ -49,6 +54,13 @@ void main() async {
 
   runApp(const SakuraApp());
 }
+
+/// Bật để bản RELEASE dùng debug token App Check thay vì Play Integrity —
+/// dành cho APK dùng thử gửi tay (không cài qua Google Play).
+const bool _useDebugAppCheck = bool.fromEnvironment(
+  'USE_DEBUG_APPCHECK',
+  defaultValue: false,
+);
 
 /// Debug token App Check DÙNG CHUNG cho team (Android, chỉ bản debug).
 /// Đã đăng ký trong Firebase Console → App Check → `com.example.layout`
