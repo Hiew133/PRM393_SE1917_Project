@@ -20,16 +20,17 @@ void main() async {
     );
 
     // App Check: Firebase AI Logic luôn cưỡng chế ("Basic - Enforced") nên
-    // request KHÔNG có token sẽ bị chặn. Lúc DEV dùng debug provider: chạy app
-    // 1 lần rồi lấy debug token in ra (logcat/console trình duyệt) và đăng ký
-    // trong Firebase Console → App Check → Manage debug tokens.
+    // request KHÔNG có token sẽ bị chặn. Lúc DEV dùng debug provider với
+    // TOKEN CHUNG của team (_androidDebugToken) — đăng ký 1 LẦN trong
+    // Firebase Console → App Check → app `com.example.layout` → Manage debug
+    // tokens là mọi máy dev chạy được, không cần add token từng máy.
     // Khi lên production: đổi androidProvider → playIntegrity, webProvider →
     // reCAPTCHA site key thật.
     try {
       await FirebaseAppCheck.instance.activate(
         providerAndroid: kReleaseMode
             ? const AndroidPlayIntegrityProvider()
-            : const AndroidDebugProvider(),
+            : const AndroidDebugProvider(debugToken: _androidDebugToken),
         // Web bắt buộc truyền provider; ở chế độ debug (bật cờ trong
         // web/index.html) SDK bỏ qua reCAPTCHA và dùng debug token.
         providerWeb: ReCaptchaV3Provider(_webRecaptchaSiteKey),
@@ -48,6 +49,16 @@ void main() async {
 
   runApp(const SakuraApp());
 }
+
+/// Debug token App Check DÙNG CHUNG cho team (Android, chỉ bản debug).
+/// Đã đăng ký trong Firebase Console → App Check → `com.example.layout`
+/// → Manage debug tokens. Máy mới clone repo về là chạy được luôn.
+/// Có thể override bằng: --dart-define=APP_CHECK_DEBUG_TOKEN=xxxx
+/// (Token này chỉ có tác dụng bypass App Check lúc dev — không dùng ở release.)
+const String _androidDebugToken = String.fromEnvironment(
+  'APP_CHECK_DEBUG_TOKEN',
+  defaultValue: '00b89c8c-2636-491a-971c-35c1b6d19cdf',
+);
 
 /// reCAPTCHA v3 site key cho App Check trên Web.
 /// - DEV: chỉ cần là chuỗi placeholder vì đã bật debug token trong index.html.
