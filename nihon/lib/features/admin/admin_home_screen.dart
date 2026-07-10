@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/app_config.dart';
+import '../review/review_screen.dart';
 import '../welcome/welcome_screen.dart';
 import 'speaking/data/admin_repository.dart';
 import 'speaking/speaking_admin_screen.dart';
@@ -40,15 +42,35 @@ class AdminHomeScreen extends StatelessWidget {
                       Text('Nội dung đang mở',
                           style: AppTextStyles.sectionLabel),
                       const SizedBox(height: 12),
-                      // 話す — kỹ năng DUY NHẤT đang hoạt động.
+                      // 話す — soạn đề thi Nói.
                       _ActiveSkillCard(
                         jp: '話す',
                         vi: 'Luyện nói',
                         stat: '$totalSpeaking đề',
+                        desc: 'Soạn đề thi Nói (JPD316 · JPD113)',
+                        color: AppColors.speaking,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const SpeakingAdminScreen()),
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                      // 語彙 — mở màn Ôn tập ở chế độ Admin (CRUD giáo trình,
+                      // bài học, từ vựng trên Firestore). Thoát ra thì tắt
+                      // admin để học viên không thấy nút chỉnh sửa.
+                      _ActiveSkillCard(
+                        jp: '語彙',
+                        vi: 'Từ vựng',
+                        stat: 'CRUD',
+                        desc: 'Quản lý giáo trình, bài học, từ vựng (Ôn tập)',
+                        color: AppColors.vocab,
+                        onTap: () {
+                          AppConfig.isAdmin.value = true;
+                          Navigator.of(context)
+                              .push(MaterialPageRoute(
+                                  builder: (_) => const ReviewScreen()))
+                              .then((_) => AppConfig.isAdmin.value = false);
+                        },
                       ),
                       const SizedBox(height: 22),
                       Text('Sắp có', style: AppTextStyles.sectionLabel),
@@ -81,9 +103,9 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  // 4 kỹ năng chưa mở (jp, vi, màu).
+  // Kỹ năng chưa mở (jp, vi, màu). Nghe hiện chưa có phần quản trị —
+  // bài nghe đang đóng gói sẵn trong assets, không soạn qua Firestore.
   static const List<(String, String, Color)> _comingSkills = [
-    ('語彙', 'Từ vựng', AppColors.vocab),
     ('漢字', 'Kanji', AppColors.kanji),
     ('読む', 'Đọc hiểu', AppColors.reading),
     ('聴く', 'Nghe', AppColors.listening),
@@ -153,22 +175,25 @@ class AdminHomeScreen extends StatelessWidget {
   }
 }
 
-/// Thẻ kỹ năng ĐANG MỞ (話す) — nổi bật, full-width.
+/// Thẻ kỹ năng ĐANG MỞ — nổi bật, full-width.
 class _ActiveSkillCard extends StatelessWidget {
   final String jp;
   final String vi;
   final String stat;
+  final String desc;
+  final Color color;
   final VoidCallback onTap;
   const _ActiveSkillCard({
     required this.jp,
     required this.vi,
     required this.stat,
+    required this.desc,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    const color = AppColors.speaking;
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(16),
@@ -225,7 +250,7 @@ class _ActiveSkillCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text('Soạn đề thi Nói (JPD316 · JPD113)',
+                    Text(desc,
                         style: AppTextStyles.latin(
                             size: 12,
                             height: 1.35,
@@ -233,7 +258,7 @@ class _ActiveSkillCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: color),
+              Icon(Icons.chevron_right, color: color),
             ],
           ),
         ),

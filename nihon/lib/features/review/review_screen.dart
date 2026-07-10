@@ -46,12 +46,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
         app: Firebase.app(),
         databaseId: 'default',
       );
-      DocumentSnapshot doc = await firestore.collection('settings').doc('review_screen').get();
+      DocumentSnapshot doc = await firestore
+          .collection('settings')
+          .doc('review_screen')
+          .get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>?;
         if (data != null) {
           setState(() {
-            _screenTitle = data['screenTitle'] as String? ?? 'Luyện Tập Từ Vựng';
+            _screenTitle =
+                data['screenTitle'] as String? ?? 'Luyện Tập Từ Vựng';
 
             if (data['books'] != null) {
               _books = List<String>.from(data['books']);
@@ -76,7 +80,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
             }
 
             if (data['lessons'] != null) {
-              final Map<String, dynamic> rawLessons = data['lessons'] as Map<String, dynamic>;
+              final Map<String, dynamic> rawLessons =
+                  data['lessons'] as Map<String, dynamic>;
               _bookLessons = rawLessons.map((key, value) {
                 return MapEntry(key, List<int>.from(value as List));
               });
@@ -97,14 +102,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
           'screenTitle': 'Luyện Tập Từ Vựng',
           'books': ['Nhật 1', 'Nhật 2'],
           'booksMetadata': {
-            'Nhật 1': {
-              'title': 'Nhật 1',
-              'desc': 'N5 - N4 (Cơ bản)',
-            },
-            'Nhật 2': {
-              'title': 'Nhật 2',
-              'desc': 'N3 - N2 (Trung cấp)',
-            },
+            'Nhật 1': {'title': 'Nhật 1', 'desc': 'N5 - N4 (Cơ bản)'},
+            'Nhật 2': {'title': 'Nhật 2', 'desc': 'N3 - N2 (Trung cấp)'},
           },
           'lessons': {},
           'lessonTitles': {},
@@ -120,9 +119,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   /// Cập nhật cấu hình settings lên Firestore
-  Future<void> _updateSettings({
-    String? screenTitle,
-  }) async {
+  Future<void> _updateSettings({String? screenTitle}) async {
     try {
       final firestore = FirebaseFirestore.instanceFor(
         app: Firebase.app(),
@@ -131,7 +128,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final updateData = <String, dynamic>{};
       if (screenTitle != null) updateData['screenTitle'] = screenTitle;
 
-      await firestore.collection('settings').doc('review_screen').update(updateData);
+      await firestore
+          .collection('settings')
+          .doc('review_screen')
+          .update(updateData);
       await _loadSettings();
     } catch (e) {
       print("Lỗi khi cập nhật cấu hình: $e");
@@ -158,13 +158,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   /// Hộp thoại sửa tiêu đề bài học
-  void _showEditLessonTitleDialog(int lessonNumber, String currentTitle, StateSetter dialogSetState) {
+  void _showEditLessonTitleDialog(
+    int lessonNumber,
+    String currentTitle,
+    StateSetter dialogSetState,
+  ) {
     final controller = TextEditingController(text: currentTitle);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Sửa Tiêu Đề Bài Học', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Sửa Tiêu Đề Bài Học',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -180,7 +187,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.vocab,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
@@ -211,7 +220,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         app: Firebase.app(),
         databaseId: 'default',
       );
-      
+
       final QuerySnapshot snapshot = await firestore
           .collection('vocabulary')
           .where('book', isEqualTo: book)
@@ -252,7 +261,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Thêm Giáo Trình Mới', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Thêm Giáo Trình Mới',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -281,7 +293,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.vocab,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               final name = nameController.text.trim();
@@ -289,7 +303,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
               if (name.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng điền đầy đủ Tên giáo trình!')),
+                  const SnackBar(
+                    content: Text('Vui lòng điền đầy đủ Tên giáo trình!'),
+                  ),
                 );
                 return;
               }
@@ -306,26 +322,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
               try {
                 final updatedBooks = List<String>.from(_books)..add(name);
                 final updatedMeta = Map<String, dynamic>.from(_booksMetadata);
-                updatedMeta[name] = {
-                  'title': name,
-                  'desc': desc,
-                };
+                updatedMeta[name] = {'title': name, 'desc': desc};
 
                 final firestore = FirebaseFirestore.instanceFor(
                   app: Firebase.app(),
                   databaseId: 'default',
                 );
 
-                await firestore.collection('settings').doc('review_screen').set({
-                  'books': updatedBooks,
-                  'booksMetadata': updatedMeta,
-                }, SetOptions(merge: true));
+                await firestore.collection('settings').doc('review_screen').set(
+                  {'books': updatedBooks, 'booksMetadata': updatedMeta},
+                  SetOptions(merge: true),
+                );
 
                 await _loadSettings();
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đã thêm giáo trình "$name" thành công!')),
+                    SnackBar(
+                      content: Text('Đã thêm giáo trình "$name" thành công!'),
+                    ),
                   );
                 }
               } catch (e) {
@@ -352,7 +367,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Thêm Bài Học Mới', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Thêm Bài Học Mới',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -382,7 +400,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.vocab,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               final lessonStr = lessonController.text.trim();
@@ -395,7 +415,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 return;
               }
 
-              final currentLessons = List<int>.from(_bookLessons[_selectedBook] ?? []);
+              final currentLessons = List<int>.from(
+                _bookLessons[_selectedBook] ?? [],
+              );
               if (currentLessons.contains(lesson)) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Bài học này đã tồn tại!')),
@@ -414,9 +436,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 databaseId: 'default',
               );
 
-              final Map<String, dynamic> updateData = {
-                'lessons': _bookLessons,
-              };
+              final Map<String, dynamic> updateData = {'lessons': _bookLessons};
 
               final title = titleController.text.trim();
               if (title.isNotEmpty) {
@@ -425,7 +445,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 updateData['lessonTitles'] = _lessonTitles;
               }
 
-              await firestore.collection('settings').doc('review_screen').update(updateData);
+              await firestore
+                  .collection('settings')
+                  .doc('review_screen')
+                  .update(updateData);
               await _loadSettings();
             },
             child: const Text('Lưu', style: TextStyle(color: Colors.white)),
@@ -438,14 +461,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
   /// Hộp thoại sửa tên và mô tả giáo trình
   void _showEditBookDialog(String bookKey) {
     final metadata = _booksMetadata[bookKey] as Map<String, dynamic>? ?? {};
-    final titleController = TextEditingController(text: metadata['title'] ?? bookKey);
+    final titleController = TextEditingController(
+      text: metadata['title'] ?? bookKey,
+    );
     final descController = TextEditingController(text: metadata['desc'] ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Sửa Giáo Trình', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Sửa Giáo Trình',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -474,15 +502,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Xóa giáo trình?'),
-                    content: Text('Bạn có chắc chắn muốn xóa giáo trình "$bookKey" cùng toàn bộ từ vựng thuộc giáo trình này?'),
+                    content: Text(
+                      'Bạn có chắc chắn muốn xóa giáo trình "$bookKey" cùng toàn bộ từ vựng thuộc giáo trình này?',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+                        child: const Text(
+                          'Hủy',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                         child: const Text('Xóa'),
                       ),
                     ],
@@ -491,22 +526,30 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                 if (confirm == true && context.mounted) {
                   Navigator.pop(context); // Đóng Dialog sửa giáo trình
-                  
+
                   try {
-                    final updatedBooks = List<String>.from(_books)..remove(bookKey);
-                    final updatedMeta = Map<String, dynamic>.from(_booksMetadata)..remove(bookKey);
-                    final updatedLessons = Map<String, dynamic>.from(_bookLessons)..remove(bookKey);
+                    final updatedBooks = List<String>.from(_books)
+                      ..remove(bookKey);
+                    final updatedMeta = Map<String, dynamic>.from(
+                      _booksMetadata,
+                    )..remove(bookKey);
+                    final updatedLessons = Map<String, dynamic>.from(
+                      _bookLessons,
+                    )..remove(bookKey);
 
                     final firestore = FirebaseFirestore.instanceFor(
                       app: Firebase.app(),
                       databaseId: 'default',
                     );
 
-                    await firestore.collection('settings').doc('review_screen').set({
-                      'books': updatedBooks,
-                      'booksMetadata': updatedMeta,
-                      'lessons': updatedLessons,
-                    }, SetOptions(merge: true));
+                    await firestore
+                        .collection('settings')
+                        .doc('review_screen')
+                        .set({
+                          'books': updatedBooks,
+                          'booksMetadata': updatedMeta,
+                          'lessons': updatedLessons,
+                        }, SetOptions(merge: true));
 
                     // Xóa tất cả từ vựng thuộc sách này
                     final QuerySnapshot vocabDocs = await firestore
@@ -527,7 +570,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Đã xóa giáo trình "$bookKey" thành công!')),
+                        SnackBar(
+                          content: Text(
+                            'Đã xóa giáo trình "$bookKey" thành công!',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
@@ -540,7 +587,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 }
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Xóa', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Xóa',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -549,41 +599,47 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.vocab,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               final newTitle = titleController.text.trim();
               final newDesc = descController.text.trim();
               if (newTitle.isNotEmpty) {
                 Navigator.pop(context);
-                
+
                 try {
                   final updatedMeta = Map<String, dynamic>.from(_booksMetadata);
-                  updatedMeta[bookKey] = {
-                    'title': newTitle,
-                    'desc': newDesc,
-                  };
+                  updatedMeta[bookKey] = {'title': newTitle, 'desc': newDesc};
 
                   final firestore = FirebaseFirestore.instanceFor(
                     app: Firebase.app(),
                     databaseId: 'default',
                   );
 
-                  await firestore.collection('settings').doc('review_screen').set({
-                    'booksMetadata': updatedMeta,
-                  }, SetOptions(merge: true));
-                  
+                  await firestore
+                      .collection('settings')
+                      .doc('review_screen')
+                      .set({
+                        'booksMetadata': updatedMeta,
+                      }, SetOptions(merge: true));
+
                   await _loadSettings();
-                  
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Đã cập nhật giáo trình thành công!')),
+                      SnackBar(
+                        content: Text('Đã cập nhật giáo trình thành công!'),
+                      ),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi khi cập nhật giáo trình: $e')),
+                      SnackBar(
+                        content: Text('Lỗi khi cập nhật giáo trình: $e'),
+                      ),
                     );
                   }
                 }
@@ -603,7 +659,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Sửa Tiêu Đề', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Sửa Tiêu Đề',
+          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -619,7 +678,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.vocab,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
@@ -640,24 +701,36 @@ class _ReviewScreenState extends State<ReviewScreen> {
     String? prefilledBook,
     int? prefilledLesson,
   }) {
-    final jpController = TextEditingController(text: initialWordData?['jp'] ?? '');
-    final readingController = TextEditingController(text: initialWordData?['reading'] ?? '');
-    final viController = TextEditingController(text: initialWordData?['vi'] ?? '');
+    final jpController = TextEditingController(
+      text: initialWordData?['jp'] ?? '',
+    );
+    final readingController = TextEditingController(
+      text: initialWordData?['reading'] ?? '',
+    );
+    final viController = TextEditingController(
+      text: initialWordData?['vi'] ?? '',
+    );
     final lessonController = TextEditingController(
       text: initialWordData != null
           ? initialWordData['lesson'].toString()
           : (prefilledLesson?.toString() ?? ''),
     );
-    
-    String selectedBookForWord = initialWordData?['book'] ?? (prefilledBook ?? _selectedBook);
+
+    String selectedBookForWord =
+        initialWordData?['book'] ?? (prefilledBook ?? _selectedBook);
     final isNew = initialWordData == null;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Thêm Từ Vựng Mới' : 'Sửa Từ Vựng', style: GoogleFonts.lexend(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            isNew ? 'Thêm Từ Vựng Mới' : 'Sửa Từ Vựng',
+            style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -670,9 +743,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       labelText: 'Giáo trình',
                     ),
                     items: _books.map((book) {
-                      final metadata = _booksMetadata[book] as Map<String, dynamic>? ?? {};
+                      final metadata =
+                          _booksMetadata[book] as Map<String, dynamic>? ?? {};
                       final title = metadata['title'] ?? book;
-                      return DropdownMenuItem<String>(value: book, child: Text(title));
+                      return DropdownMenuItem<String>(
+                        value: book,
+                        child: Text(title),
+                      );
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
@@ -728,7 +805,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.vocab,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
@@ -740,13 +819,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                 if (jp.isEmpty || vi.isEmpty || lesson == null) {
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin hợp lệ!')),
+                    const SnackBar(
+                      content: Text('Vui lòng điền đầy đủ thông tin hợp lệ!'),
+                    ),
                   );
                   return;
                 }
 
                 Navigator.pop(context);
-                
+
                 try {
                   final firestore = FirebaseFirestore.instanceFor(
                     app: Firebase.app(),
@@ -765,23 +846,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       data['reading'] = reading;
                     }
                     await firestore.collection('vocabulary').add(data);
-                    
+
                     messenger.showSnackBar(
-                      SnackBar(content: Text('Đã thêm từ mới vào Bài $lesson!')),
+                      SnackBar(
+                        content: Text('Đã thêm từ mới vào Bài $lesson!'),
+                      ),
                     );
                   } else {
                     final docId = initialWordData['id'] as String;
-                    final Map<String, dynamic> data = {
-                      'jp': jp,
-                      'vi': vi,
-                    };
+                    final Map<String, dynamic> data = {'jp': jp, 'vi': vi};
                     if (reading.isNotEmpty) {
                       data['reading'] = reading;
                     } else {
                       data['reading'] = FieldValue.delete();
                     }
-                    await firestore.collection('vocabulary').doc(docId).update(data);
-                    
+                    await firestore
+                        .collection('vocabulary')
+                        .doc(docId)
+                        .update(data);
+
                     messenger.showSnackBar(
                       const SnackBar(content: Text('Đã cập nhật từ vựng!')),
                     );
@@ -789,9 +872,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                   setState(() {});
                 } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e')),
-                  );
+                  messenger.showSnackBar(SnackBar(content: Text('Lỗi: $e')));
                 }
               },
               child: const Text('Lưu', style: TextStyle(color: Colors.white)),
@@ -812,7 +893,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             app: Firebase.app(),
             databaseId: 'default',
           );
-          
+
           return StreamBuilder<QuerySnapshot>(
             stream: firestore
                 .collection('vocabulary')
@@ -824,7 +905,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 return const AlertDialog(
                   content: SizedBox(
                     height: 100,
-                    child: Center(child: CircularProgressIndicator(color: AppColors.vocab)),
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.vocab),
+                    ),
                   ),
                 );
               }
@@ -832,17 +915,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
               final docs = snapshot.data?.docs ?? [];
 
               final key = "${_selectedBook}_$lessonNumber";
-              final currentTitle = _lessonTitles[key] ?? 'Từ vựng Bài $lessonNumber';
+              final currentTitle =
+                  _lessonTitles[key] ?? 'Từ vựng Bài $lessonNumber';
 
               return AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          _showEditLessonTitleDialog(lessonNumber, currentTitle, setDialogState);
+                          _showEditLessonTitleDialog(
+                            lessonNumber,
+                            currentTitle,
+                            setDialogState,
+                          );
                         },
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -851,53 +941,76 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               child: Text(
                                 currentTitle,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.lexend(fontWeight: FontWeight.bold, fontSize: 16),
+                                style: GoogleFonts.lexend(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
-                            const Icon(Icons.edit, size: 16, color: Colors.blue),
+                            const Icon(
+                              Icons.edit,
+                              size: 16,
+                              color: Colors.blue,
+                            ),
                           ],
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle, color: AppColors.vocab),
+                      icon: const Icon(
+                        Icons.add_circle,
+                        color: AppColors.vocab,
+                      ),
                       onPressed: () {
                         _showAddEditWordDialog(
                           prefilledBook: _selectedBook,
                           prefilledLesson: lessonNumber,
                         );
                       },
-                    )
+                    ),
                   ],
                 ),
                 content: SizedBox(
                   width: double.maxFinite,
                   height: 350,
                   child: docs.isEmpty
-                      ? const Center(child: Text('Không có từ vựng nào trong bài này.'))
+                      ? const Center(
+                          child: Text('Không có từ vựng nào trong bài này.'),
+                        )
                       : ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                          behavior: ScrollConfiguration.of(
+                            context,
+                          ).copyWith(scrollbars: false),
                           child: ListView.separated(
                             shrinkWrap: true,
                             itemCount: docs.length,
-                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            separatorBuilder: (context, index) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final doc = docs[index];
                               final data = doc.data() as Map<String, dynamic>;
                               final jp = data['jp'] as String? ?? '';
                               final vi = data['vi'] as String? ?? '';
                               final reading = data['reading'] as String? ?? '';
-                              
+
                               return ListTile(
-                                contentPadding: const EdgeInsets.only(right: 8), // Thêm khoảng đệm bên phải để tránh sát viền
+                                contentPadding: const EdgeInsets.only(
+                                  right: 8,
+                                ), // Thêm khoảng đệm bên phải để tránh sát viền
                                 title: Text(
                                   jp,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
                                 subtitle: Text(
                                   reading.isNotEmpty ? '$reading • $vi' : vi,
-                                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -905,39 +1018,66 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     IconButton(
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      icon: const Icon(Icons.edit, color: Colors.blue, size: 18),
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                        size: 18,
+                                      ),
                                       onPressed: () {
-                                        final wordData = Map<String, dynamic>.from(data);
+                                        final wordData =
+                                            Map<String, dynamic>.from(data);
                                         wordData['id'] = doc.id;
-                                        _showAddEditWordDialog(initialWordData: wordData);
+                                        _showAddEditWordDialog(
+                                          initialWordData: wordData,
+                                        );
                                       },
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                        size: 18,
+                                      ),
                                       onPressed: () async {
                                         final confirm = await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
                                             title: const Text('Xác nhận xóa'),
-                                            content: Text('Bạn có chắc muốn xóa từ "$jp" không?'),
+                                            content: Text(
+                                              'Bạn có chắc muốn xóa từ "$jp" không?',
+                                            ),
                                             actions: [
                                               TextButton(
-                                                onPressed: () => Navigator.pop(context, false),
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
                                                 child: const Text('Hủy'),
                                               ),
                                               TextButton(
-                                                onPressed: () => Navigator.pop(context, true),
-                                                child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: const Text(
+                                                  'Xóa',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
                                               ),
                                             ],
                                           ),
                                         );
 
                                         if (confirm == true) {
-                                          await firestore.collection('vocabulary').doc(doc.id).delete();
+                                          await firestore
+                                              .collection('vocabulary')
+                                              .doc(doc.id)
+                                              .delete();
                                           setDialogState(() {});
                                           setState(() {});
                                         }
@@ -957,15 +1097,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Xóa bài học?'),
-                          content: Text('Bạn có chắc chắn muốn xóa Bài $lessonNumber cùng toàn bộ từ vựng trong bài này?'),
+                          content: Text(
+                            'Bạn có chắc chắn muốn xóa Bài $lessonNumber cùng toàn bộ từ vựng trong bài này?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+                              child: const Text(
+                                'Hủy',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
                               child: const Text('Xóa'),
                             ),
                           ],
@@ -974,7 +1121,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                       if (confirm == true && context.mounted) {
                         Navigator.pop(context); // Đóng Dialog quản lý từ vựng
-                        
+
                         try {
                           final firestore = FirebaseFirestore.instanceFor(
                             app: Firebase.app(),
@@ -982,18 +1129,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           );
 
                           // 1. Cập nhật danh sách bài học của giáo trình
-                          final List<int> updatedLessons = List<int>.from(_bookLessons[_selectedBook] ?? [])..remove(lessonNumber);
-                          final Map<String, dynamic> newLessonsMap = Map<String, dynamic>.from(_bookLessons);
+                          final List<int> updatedLessons = List<int>.from(
+                            _bookLessons[_selectedBook] ?? [],
+                          )..remove(lessonNumber);
+                          final Map<String, dynamic> newLessonsMap =
+                              Map<String, dynamic>.from(_bookLessons);
                           newLessonsMap[_selectedBook] = updatedLessons;
 
                           // 2. Xóa tiêu đề bài học nếu có
-                          final Map<String, dynamic> newLessonTitles = Map<String, dynamic>.from(_lessonTitles);
-                          newLessonTitles.remove("${_selectedBook}_$lessonNumber");
+                          final Map<String, dynamic> newLessonTitles =
+                              Map<String, dynamic>.from(_lessonTitles);
+                          newLessonTitles.remove(
+                            "${_selectedBook}_$lessonNumber",
+                          );
 
-                          await firestore.collection('settings').doc('review_screen').set({
-                            'lessons': newLessonsMap,
-                            'lessonTitles': newLessonTitles,
-                          }, SetOptions(merge: true));
+                          await firestore
+                              .collection('settings')
+                              .doc('review_screen')
+                              .set({
+                                'lessons': newLessonsMap,
+                                'lessonTitles': newLessonTitles,
+                              }, SetOptions(merge: true));
 
                           // 3. Xóa toàn bộ từ vựng thuộc giáo trình này và bài học này
                           final vocabDocs = await firestore
@@ -1012,20 +1168,29 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Đã xóa Bài $lessonNumber thành công!')),
+                              SnackBar(
+                                content: Text(
+                                  'Đã xóa Bài $lessonNumber thành công!',
+                                ),
+                              ),
                             );
                           }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Lỗi khi xóa bài học: $e')),
+                              SnackBar(
+                                content: Text('Lỗi khi xóa bài học: $e'),
+                              ),
                             );
                           }
                         }
                       }
                     },
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('Xóa bài học', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Xóa bài học',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
@@ -1033,7 +1198,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       setState(() {});
                     },
                     child: const Text('Đóng'),
-                  )
+                  ),
                 ],
               );
             },
@@ -1047,9 +1212,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget build(BuildContext context) {
     if (_isLoadingSettings) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.vocab),
-        ),
+        body: Center(child: CircularProgressIndicator(color: AppColors.vocab)),
       );
     }
 
@@ -1069,7 +1232,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     alignment: Alignment.centerLeft,
                     child: GestureDetector(
                       onTap: () {
-                        context.findAncestorStateOfType<MainNavigationState>()?.goToTab(0);
+                        // Trong tab chính: về Trang chủ. Khi được push riêng
+                        // (vd. từ trang Admin): pop về màn trước.
+                        final nav = context
+                            .findAncestorStateOfType<MainNavigationState>();
+                        if (nav != null) {
+                          nav.goToTab(0);
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -1096,61 +1267,81 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   ValueListenableBuilder<bool>(
                     valueListenable: AppConfig.isAdmin,
                     builder: (context, isAdmin, child) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              if (isAdmin) {
-                                _showEditScreenTitleDialog();
-                              } else {
-                                setState(() {
-                                  _tapCount++;
-                                });
-                                if (_tapCount >= 5) {
-                                  _tapCount = 0;
-                                  AppConfig.isAdmin.value = true;
-                                }
-                              }
-                            },
-                            child: Text(
-                              _screenTitle,
-                              style: GoogleFonts.lexend(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          if (isAdmin) ...[
-                            const SizedBox(width: 6),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.edit, size: 18, color: AppColors.vocab),
-                              onPressed: _showEditScreenTitleDialog,
-                            ),
-                            const SizedBox(width: 8),
-                            // Nút để tắt nhanh chế độ admin
-                            GestureDetector(
-                              onTap: () {
-                                AppConfig.isAdmin.value = false;
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'Tắt Admin',
-                                  style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
+                      return Padding(
+                        // Chừa chỗ cho nút back bên trái (và cân đối bên
+                        // phải) để tiêu đề dài không đè lên nút.
+                        padding: const EdgeInsets.symmetric(horizontal: 48),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (isAdmin) {
+                                    _showEditScreenTitleDialog();
+                                  } else {
+                                    setState(() {
+                                      _tapCount++;
+                                    });
+                                    if (_tapCount >= 5) {
+                                      _tapCount = 0;
+                                      AppConfig.isAdmin.value = true;
+                                    }
+                                  }
+                                },
+                                child: Text(
+                                  _screenTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             ),
+                            if (isAdmin) ...[
+                              const SizedBox(width: 6),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(
+                                  Icons.edit,
+                                  size: 18,
+                                  color: AppColors.vocab,
+                                ),
+                                onPressed: _showEditScreenTitleDialog,
+                              ),
+                              const SizedBox(width: 8),
+                              // Nút để tắt nhanh chế độ admin
+                              GestureDetector(
+                                onTap: () {
+                                  AppConfig.isAdmin.value = false;
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Tắt Admin',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       );
                     },
                   ),
@@ -1159,10 +1350,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               const SizedBox(height: 24),
 
               // Phần Chọn Giáo trình
-              Text(
-                'CHỌN GIÁO TRÌNH',
-                style: AppTextStyles.overline,
-              ),
+              Text('CHỌN GIÁO TRÌNH', style: AppTextStyles.overline),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 12,
@@ -1170,10 +1358,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 children: [
                   ..._books.map((book) {
                     final isSelected = _selectedBook == book;
-                    final metadata = _booksMetadata[book] as Map<String, dynamic>? ?? {};
+                    final metadata =
+                        _booksMetadata[book] as Map<String, dynamic>? ?? {};
                     final displayTitle = metadata['title'] ?? book;
                     final displayDesc = metadata['desc'] ?? '';
-                    final double cardWidth = (MediaQuery.of(context).size.width - 52) / 2;
+                    final double cardWidth =
+                        (MediaQuery.of(context).size.width - 52) / 2;
 
                     return SizedBox(
                       width: cardWidth,
@@ -1189,26 +1379,32 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 18),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.vocab : AppColors.surface,
+                                color: isSelected
+                                    ? AppColors.vocab
+                                    : AppColors.surface,
                                 borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: isSelected ? AppColors.vocab : AppColors.border,
+                                  color: isSelected
+                                      ? AppColors.vocab
+                                      : AppColors.border,
                                   width: 1.5,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: AppColors.vocab.withValues(alpha: 0.3),
+                                          color: AppColors.vocab.withValues(
+                                            alpha: 0.3,
+                                          ),
                                           blurRadius: 14,
                                           offset: const Offset(0, 6),
-                                        )
+                                        ),
                                       ]
                                     : [
                                         const BoxShadow(
                                           color: Color(0x052D1F0E),
                                           blurRadius: 8,
                                           offset: Offset(0, 2),
-                                        )
+                                        ),
                                       ],
                               ),
                               child: Column(
@@ -1218,7 +1414,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     style: AppTextStyles.latin(
                                       size: 16,
                                       weight: FontWeight.w800,
-                                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -1227,7 +1425,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     style: AppTextStyles.latin(
                                       size: 11,
                                       weight: FontWeight.w600,
-                                      color: isSelected ? Colors.white70 : AppColors.textFaint,
+                                      color: isSelected
+                                          ? Colors.white70
+                                          : AppColors.textFaint,
                                     ),
                                   ),
                                 ],
@@ -1246,13 +1446,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.grey.shade100,
+                                        color: isSelected
+                                            ? Colors.white.withValues(
+                                                alpha: 0.2,
+                                              )
+                                            : Colors.grey.shade100,
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
                                         Icons.edit,
                                         size: 14,
-                                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
@@ -1269,7 +1475,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     valueListenable: AppConfig.isAdmin,
                     builder: (context, isAdmin, child) {
                       if (!isAdmin) return const SizedBox.shrink();
-                      final double cardWidth = (MediaQuery.of(context).size.width - 52) / 2;
+                      final double cardWidth =
+                          (MediaQuery.of(context).size.width - 52) / 2;
                       return SizedBox(
                         width: cardWidth,
                         child: GestureDetector(
@@ -1288,7 +1495,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.add, color: AppColors.vocab, size: 22),
+                                const Icon(
+                                  Icons.add,
+                                  color: AppColors.vocab,
+                                  size: 22,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Thêm giáo trình',
@@ -1313,10 +1524,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'CHỌN BÀI HỌC',
-                    style: AppTextStyles.overline,
-                  ),
+                  Text('CHỌN BÀI HỌC', style: AppTextStyles.overline),
                   ValueListenableBuilder<bool>(
                     valueListenable: AppConfig.isAdmin,
                     builder: (context, isAdmin, child) {
@@ -1327,7 +1535,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         },
                         child: Row(
                           children: [
-                            const Icon(Icons.add_circle_outline, size: 16, color: AppColors.vocab),
+                            const Icon(
+                              Icons.add_circle_outline,
+                              size: 16,
+                              color: AppColors.vocab,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Thêm bài mới',
@@ -1385,12 +1597,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     }
 
                     return GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.1,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.1,
+                          ),
                       itemCount: availableLessons.length,
                       itemBuilder: (context, index) {
                         final lessonNumber = availableLessons[index];
@@ -1400,11 +1613,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             return GestureDetector(
                               onTap: () async {
                                 if (isAdmin) {
-                                  final firestore = FirebaseFirestore.instanceFor(
-                                    app: Firebase.app(),
-                                    databaseId: 'default',
-                                  );
-                                  final QuerySnapshot checkSnapshot = await firestore
+                                  final firestore =
+                                      FirebaseFirestore.instanceFor(
+                                        app: Firebase.app(),
+                                        databaseId: 'default',
+                                      );
+                                  final QuerySnapshot
+                                  checkSnapshot = await firestore
                                       .collection('vocabulary')
                                       .where('book', isEqualTo: _selectedBook)
                                       .where('lesson', isEqualTo: lessonNumber)
@@ -1422,10 +1637,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => VocabularyReviewScreen(
-                                      book: _selectedBook,
-                                      lesson: lessonNumber,
-                                    ),
+                                    builder: (context) =>
+                                        VocabularyReviewScreen(
+                                          book: _selectedBook,
+                                          lesson: lessonNumber,
+                                        ),
                                   ),
                                 ).then((_) {
                                   setState(() {});
@@ -1444,39 +1660,53 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                       color: Color(0x032D1F0E),
                                       blurRadius: 6,
                                       offset: Offset(0, 2),
-                                    )
+                                    ),
                                   ],
                                 ),
                                 child: Stack(
                                   children: [
                                     Center(
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            _lessonTitles["${_selectedBook}_$lessonNumber"] ?? 'Bài $lessonNumber',
+                                            _lessonTitles["${_selectedBook}_$lessonNumber"] ??
+                                                'Bài $lessonNumber',
                                             textAlign: TextAlign.center,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
                                             style: AppTextStyles.latin(
-                                              size: _lessonTitles.containsKey("${_selectedBook}_$lessonNumber") ? 13 : 15,
+                                              size:
+                                                  _lessonTitles.containsKey(
+                                                    "${_selectedBook}_$lessonNumber",
+                                                  )
+                                                  ? 13
+                                                  : 15,
                                               weight: FontWeight.w700,
                                               color: AppColors.textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 6),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.speaking.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(6),
+                                              color: AppColors.speaking
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
                                             child: Text(
                                               isAdmin ? 'Quản lý' : 'Sẵn sàng',
                                               style: AppTextStyles.latin(
                                                 size: 10,
                                                 weight: FontWeight.w800,
-                                                color: isAdmin ? Colors.blue : AppColors.speaking,
+                                                color: isAdmin
+                                                    ? Colors.blue
+                                                    : AppColors.speaking,
                                               ),
                                             ),
                                           ),
@@ -1489,12 +1719,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                         right: 6,
                                         child: GestureDetector(
                                           onTap: () {
-                                            _showManageVocabularyDialog(lessonNumber);
+                                            _showManageVocabularyDialog(
+                                              lessonNumber,
+                                            );
                                           },
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
-                                              color: Colors.blue.withValues(alpha: 0.1),
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.1,
+                                              ),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
