@@ -20,18 +20,6 @@ class SkillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progressBar = ClipRRect(
-      borderRadius: BorderRadius.circular(2),
-      child: LinearProgressIndicator(
-        value: skill.progress,
-        minHeight: 3,
-        backgroundColor: Colors.white.withValues(alpha: 0.25),
-        valueColor: AlwaysStoppedAnimation(
-          Colors.white.withValues(alpha: 0.9),
-        ),
-      ),
-    );
-
     return Material(
       color: skill.color,
       borderRadius: BorderRadius.circular(14),
@@ -55,7 +43,7 @@ class SkillCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(14),
-              child: wide ? _wideContent(progressBar) : _gridContent(progressBar),
+              child: wide ? _wideContent() : _gridContent(),
             ),
           ],
         ),
@@ -63,53 +51,32 @@ class SkillCard extends StatelessWidget {
     );
   }
 
-  Widget _gridContent(Widget progressBar) {
+  Widget _gridContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              skill.jpLabel,
-              style: AppTextStyles.jp(
-                size: 24,
-                weight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              skill.viLabel,
-              style: AppTextStyles.latin(
-                size: 11,
-                weight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
-          ],
+        Text(
+          skill.jpLabel,
+          style: AppTextStyles.jp(
+            size: 24,
+            weight: FontWeight.w900,
+            color: Colors.white,
+          ),
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              skill.progressText,
-              style: AppTextStyles.latin(
-                size: 14,
-                weight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            progressBar,
-          ],
+        const SizedBox(height: 3),
+        Text(
+          skill.viLabel,
+          style: AppTextStyles.latin(
+            size: 11,
+            weight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
         ),
       ],
     );
   }
 
-  Widget _wideContent(Widget progressBar) {
+  Widget _wideContent() {
     return Row(
       children: [
         Column(
@@ -136,22 +103,6 @@ class SkillCard extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              skill.progressText,
-              style: AppTextStyles.latin(
-                size: 14,
-                weight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 6),
-            SizedBox(width: 130, child: progressBar),
-          ],
-        ),
       ],
     );
   }

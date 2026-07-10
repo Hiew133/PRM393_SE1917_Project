@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
+import '../listening/screens/listening_list_screen.dart';
 import '../speaking/level_select_screen.dart';
 import '../welcome/welcome_screen.dart';
 import 'widgets/daily_goal_card.dart';
@@ -20,6 +21,12 @@ class DashboardScreen extends StatelessWidget {
     void openSpeaking() {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const LevelSelectScreen()),
+      );
+    }
+
+    void openListening() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ListeningListScreen()),
       );
     }
 
@@ -46,7 +53,11 @@ class DashboardScreen extends StatelessWidget {
             for (final skill in kSampleSkills.take(4))
               SkillCard(
                 skill: skill,
-                onTap: skill.jpLabel == '語彙' ? onStartVocabReview : null,
+                onTap: switch (skill.jpLabel) {
+                  '語彙' => onStartVocabReview,
+                  '聴く' => openListening,
+                  _ => null,
+                },
               ),
           ],
         ),
