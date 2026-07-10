@@ -11,7 +11,12 @@ class SkillCard extends StatelessWidget {
   final bool wide;
   final VoidCallback? onTap;
 
-  const SkillCard({super.key, required this.skill, this.wide = false, this.onTap});
+  const SkillCard({
+    super.key,
+    required this.skill,
+    this.wide = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

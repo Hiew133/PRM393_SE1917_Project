@@ -5,7 +5,9 @@ import '../../../core/theme/app_text_styles.dart';
 
 /// Thẻ "Tiếp tục học" (nền tối với gradient).
 class ResumeCard extends StatelessWidget {
-  const ResumeCard({super.key});
+  const ResumeCard({super.key, this.onContinue});
+
+  final VoidCallback? onContinue;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +44,7 @@ class ResumeCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () {},
+            onTap: onContinue,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
               decoration: BoxDecoration(

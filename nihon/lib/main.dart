@@ -3,8 +3,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'app.dart';
 import 'firebase_options.dart';
+import 'app.dart';
+// Tool seed dữ liệu Firestore — bỏ comment import này cùng 2 dòng gọi trong
+// main() khi cần upload dữ liệu bài học.
+// import 'core/utils/firebase_uploader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +40,12 @@ void main() async {
   } catch (e, st) {
     debugPrint('Firebase init failed: $e\n$st');
   }
+
+  // Tool seed dữ liệu Firestore (core/utils/firebase_uploader.dart) —
+  // bỏ comment khi cần upload dữ liệu bài học rồi comment lại.
+  //await uploadNhat2Lesson7Data();
+  //await checkDatabaseCounts();
+
   runApp(const SakuraApp());
 }
 

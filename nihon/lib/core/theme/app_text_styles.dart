@@ -17,11 +17,11 @@ class AppTextStyles {
     double? height,
     double letterSpacing = 0,
   }) {
-    return GoogleFonts.dmSans(
+    return GoogleFonts.inter(
       fontSize: size,
       fontWeight: weight,
       color: color,
-      height: height,
+      height: height ?? 1.3,
       letterSpacing: letterSpacing,
     );
   }
