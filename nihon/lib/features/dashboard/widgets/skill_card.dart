@@ -9,8 +9,9 @@ import '../../../data/models/skill.dart';
 class SkillCard extends StatelessWidget {
   final Skill skill;
   final bool wide;
+  final VoidCallback? onTap;
 
-  const SkillCard({super.key, required this.skill, this.wide = false});
+  const SkillCard({super.key, required this.skill, this.wide = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +32,7 @@ class SkillCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         child: Stack(
           children: [
             // Hình tròn trang trí

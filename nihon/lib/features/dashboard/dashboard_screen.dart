@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
+import '../speaking/level_select_screen.dart';
+import '../welcome/welcome_screen.dart';
 import 'widgets/daily_goal_card.dart';
 import 'widgets/resume_card.dart';
 import 'widgets/skill_card.dart';
@@ -13,6 +15,12 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void openSpeaking() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LevelSelectScreen()),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
@@ -37,8 +45,69 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        SkillCard(skill: kSampleSkills.last, wide: true),
+        // Luyện nói với AI — chỗ vào phần Nói (giữ DUY NHẤT một lối vào ở đây).
+        _SpeakingButton(onTap: openSpeaking),
       ],
+    );
+  }
+}
+
+/// Nút nổi bật dẫn tới phần Luyện nói với AI.
+class _SpeakingButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SpeakingButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.speaking,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.mic, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Luyện nói với AI',
+                      style: AppTextStyles.latin(
+                        size: 16,
+                        weight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '話す · Hội thoại tiếng Nhật cùng 田中先生',
+                      style: AppTextStyles.jp(
+                        size: 12,
+                        weight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -105,6 +174,25 @@ class _UserHeader extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Nút về trang đầu (đăng nhập / Welcome).
+        GestureDetector(
+          onTap: () => Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+            (route) => false,
+          ),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(Icons.logout,
+                size: 20, color: AppColors.textSecondary),
           ),
         ),
       ],
