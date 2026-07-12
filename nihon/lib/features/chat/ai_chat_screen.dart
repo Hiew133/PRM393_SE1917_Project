@@ -1,12 +1,11 @@
-import 'dart:convert';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import '../../core/config/api_config.dart';
 import '../../core/services/role_service.dart';
-import '../../core/services/speech_assessment_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/tts_helper.dart';
@@ -44,6 +43,27 @@ class _AIChatScreenState extends State<AIChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+
+  /// Phiên chat Gemini qua **Firebase AI Logic** (Vertex AI) — giống phần
+  /// Luyện nói: không cần API key trong app, Firebase + App Check lo xác thực.
+  /// ChatSession tự giữ lịch sử hội thoại nên không phải gửi lại history.
+  ChatSession? _chat;
+
+  static const String _systemInstruction =
+      'Bạn là một trợ lý học tiếng Nhật thông minh, vui vẻ và thân thiện tên là Nihon. '
+      'Hãy trả lời câu hỏi của học sinh bằng Tiếng Việt ngắn gọn, dễ hiểu, '
+      'sử dụng các ký tự Markdown để in đậm, tạo danh sách rõ ràng, kèm icon sinh động.';
+
+  ChatSession _ensureChat() {
+    if (_chat == null) {
+      final model = FirebaseAI.vertexAI().generativeModel(
+        model: ApiConfig.model,
+        systemInstruction: Content.system(_systemInstruction),
+      );
+      _chat = model.startChat();
+    }
+    return _chat!;
+  }
 
   final List<String> _suggestions = [
     'Giải thích cấu trúc 〜てください',
@@ -92,76 +112,31 @@ class _AIChatScreenState extends State<AIChatScreen> {
     _textController.clear();
     _scrollToBottom();
 
-    final apiKey = SpeechAssessmentService().apiKey;
-    if (apiKey == null || apiKey.trim().isEmpty) {
+    try {
+      final response = await _ensureChat()
+          .sendMessage(Content.text(text))
+          .timeout(const Duration(seconds: 30));
+
+      final reply = response.text?.trim() ?? '';
+      if (reply.isEmpty) {
+        throw Exception('AI không trả về nội dung.');
+      }
+
       setState(() {
         _messages.add(ChatMessage(
-          text: 'Vui lòng cấu hình Gemini API Key trước khi sử dụng trợ lý học tập Nihon! Bạn có thể dán key ở tab Học Kanji hoặc cấu hình trực tiếp.',
+          text: reply,
           isUser: false,
           timestamp: DateTime.now(),
         ));
         _isLoading = false;
       });
-      _scrollToBottom();
-      return;
-    }
-
-    try {
-      final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
-      );
-
-      final historyList = _messages.take(_messages.length - 1).map((msg) {
-        return {
-          'role': msg.isUser ? 'user' : 'model',
-          'parts': [{'text': msg.text}]
-        };
-      }).toList();
-
-      historyList.add({
-        'role': 'user',
-        'parts': [{'text': text}]
-      });
-
-      final systemInstruction = 'Bạn là một trợ lý học tiếng Nhật thông minh, vui vẻ và thân thiện tên là Nihon. Hãy trả lời câu hỏi của học sinh bằng Tiếng Việt ngắn gọn, dễ hiểu, sử dụng các ký tự Markdown để in đậm, tạo danh sách rõ ràng, kèm icon sinh động.';
-
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': historyList,
-          'systemInstruction': {
-            'parts': [{'text': systemInstruction}]
-          }
-        }),
-      ).timeout(const Duration(seconds: 12));
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        final String textContent = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
-        
-        setState(() {
-          _messages.add(ChatMessage(
-            text: textContent.trim(),
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _messages.add(ChatMessage(
-            text: 'Gọi Gemini API thất bại. Mã lỗi: ${response.statusCode}',
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+    } catch (e, st) {
+      // Log lỗi gốc để debug (App Check, quota, mạng...) trước khi hiển thị
+      // thông báo thân thiện cho người dùng.
+      debugPrint('AI chat error: $e\n$st');
       setState(() {
         _messages.add(ChatMessage(
-          text: 'Có lỗi xảy ra: $e. Hãy kiểm tra kết nối mạng của bạn!',
+          text: 'Không gọi được Trợ lý AI. Bạn kiểm tra kết nối mạng rồi thử lại giúp mình nhé!',
           isUser: false,
           timestamp: DateTime.now(),
         ));
@@ -202,18 +177,24 @@ class _AIChatScreenState extends State<AIChatScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Trợ lý học tập Nihon',
-                  style: AppTextStyles.latin(size: 16, weight: FontWeight.bold, color: AppColors.textPrimary),
-                ),
-                Text(
-                  'Đồng hành cùng bạn học tiếng Nhật',
-                  style: AppTextStyles.latin(size: 11, color: AppColors.textMuted),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Trợ lý học tập Nihon',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.latin(size: 16, weight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  Text(
+                    'Đồng hành cùng bạn học tiếng Nhật',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.latin(size: 11, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -3,9 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_config.dart';
+import '../../core/widgets/guest_lock_dialog.dart';
 import '../home/main_navigation.dart';
 import 'vocabulary_review_screen.dart';
 
@@ -1367,15 +1369,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     final isSelected = _selectedBook == book;
                     final metadata =
                         _booksMetadata[book] as Map<String, dynamic>? ?? {};
-                    final displayTitle = metadata['title'] ?? book;
                     final displayDesc = metadata['desc'] ?? '';
                     final double cardWidth =
                         (MediaQuery.of(context).size.width - 52) / 2;
+                    // Khách chỉ được học thử giáo trình đầu tiên.
+                    final isGuest =
+                        RoleService().currentRole.value == AppRole.guest;
+                    final isBookLocked =
+                        isGuest && _books.isNotEmpty && book != _books.first;
+                    final displayTitle =
+                        '${metadata['title'] ?? book}${isBookLocked ? ' 🔒' : ''}';
 
                     return SizedBox(
                       width: cardWidth,
                       child: GestureDetector(
                         onTap: () {
+                          if (isBookLocked) {
+                            showGuestLockDialog(context);
+                            return;
+                          }
                           setState(() {
                             _selectedBook = book;
                           });
@@ -1614,11 +1626,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       itemCount: availableLessons.length,
                       itemBuilder: (context, index) {
                         final lessonNumber = availableLessons[index];
+                        // Khách chỉ được ôn thử bài đầu tiên của giáo trình đầu.
+                        final isGuest = RoleService().currentRole.value ==
+                            AppRole.guest;
+                        final isLessonLocked = isGuest &&
+                            (index > 0 ||
+                                (_books.isNotEmpty &&
+                                    _selectedBook != _books.first));
                         return ValueListenableBuilder<bool>(
                           valueListenable: AppConfig.isAdmin,
                           builder: (context, isAdmin, child) {
                             return GestureDetector(
                               onTap: () async {
+                                if (isLessonLocked) {
+                                  showGuestLockDialog(context);
+                                  return;
+                                }
                                 if (isAdmin) {
                                   final firestore =
                                       FirebaseFirestore.instanceFor(
@@ -1656,7 +1679,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               },
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: AppColors.surface,
+                                  color: isLessonLocked
+                                      ? AppColors.surface.withValues(alpha: 0.7)
+                                      : AppColors.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: AppColors.border,
@@ -1678,8 +1703,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            _lessonTitles["${_selectedBook}_$lessonNumber"] ??
-                                                'Bài $lessonNumber',
+                                            (_lessonTitles["${_selectedBook}_$lessonNumber"] ??
+                                                    'Bài $lessonNumber') +
+                                                (isLessonLocked ? ' 🔒' : ''),
                                             textAlign: TextAlign.center,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
@@ -1691,7 +1717,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                                   ? 13
                                                   : 15,
                                               weight: FontWeight.w700,
-                                              color: AppColors.textPrimary,
+                                              color: isLessonLocked
+                                                  ? AppColors.textMuted
+                                                  : AppColors.textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 6),
@@ -1701,19 +1729,28 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                               vertical: 3,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.speaking
-                                                  .withValues(alpha: 0.12),
+                                              color: isLessonLocked
+                                                  ? Colors.grey.withValues(
+                                                      alpha: 0.15)
+                                                  : AppColors.speaking
+                                                      .withValues(alpha: 0.12),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              isAdmin ? 'Quản lý' : 'Sẵn sàng',
+                                              isLessonLocked
+                                                  ? 'Đăng nhập'
+                                                  : isAdmin
+                                                      ? 'Quản lý'
+                                                      : 'Sẵn sàng',
                                               style: AppTextStyles.latin(
                                                 size: 10,
                                                 weight: FontWeight.w800,
-                                                color: isAdmin
-                                                    ? Colors.blue
-                                                    : AppColors.speaking,
+                                                color: isLessonLocked
+                                                    ? AppColors.textMuted
+                                                    : isAdmin
+                                                        ? Colors.blue
+                                                        : AppColors.speaking,
                                               ),
                                             ),
                                           ),

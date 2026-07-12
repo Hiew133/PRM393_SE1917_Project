@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/role_service.dart';
+import '../../../core/widgets/guest_lock_dialog.dart';
 import '../data/lesson_data.dart';
 import '../models/lesson.dart';
 import '../services/completed_service.dart';
@@ -231,9 +233,19 @@ class _ListeningListScreenState
                 final lesson =
                 filteredLessons[index];
 
-                return LessonCard(
+                // Khách chỉ được nghe thử bài đầu tiên; các bài sau khóa.
+                final isGuest =
+                    RoleService().currentRole.value == AppRole.guest;
+                final isLocked =
+                    isGuest && lessons.indexOf(lesson) > 0;
+
+                final card = LessonCard(
                   lesson: lesson,
                   onTap: () async {
+                    if (isLocked) {
+                      showGuestLockDialog(context);
+                      return;
+                    }
 
                     await Navigator.push(
                       context,
@@ -250,6 +262,22 @@ class _ListeningListScreenState
 
                     setState(() {});
                   },
+                );
+
+                if (!isLocked) return card;
+                return Stack(
+                  children: [
+                    Opacity(opacity: 0.55, child: card),
+                    const Positioned(
+                      top: 12,
+                      right: 28,
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 20,
+                        color: Color(0xFF8C8175),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

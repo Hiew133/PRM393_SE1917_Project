@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/guest_lock_dialog.dart';
 import '../admin/speaking/data/admin_repository.dart';
 import '../admin/speaking/exam_scenario.dart';
 import '../admin/speaking/models/admin_models.dart';
@@ -18,6 +20,9 @@ import 'speaking_screen.dart';
 /// Tự do.
 class LevelSelectScreen extends StatelessWidget {
   const LevelSelectScreen({super.key});
+
+  /// Chế độ Khách: chỉ được thử 1 đề Nhật 1; Nhật 2 / Nhật 3 / Tự do khóa.
+  bool get _isGuest => RoleService().currentRole.value == AppRole.guest;
 
   // ── Điều hướng từng chế độ ──────────────────────────────
   void _startNihon1(BuildContext context, Nihon1Exam exam) {
@@ -51,12 +56,14 @@ class LevelSelectScreen extends StatelessWidget {
   Future<void> _openNihon1(BuildContext context) async {
     if (!await _waitRepoReady(context)) return;
     if (!context.mounted) return;
-    final exams = AdminRepository.instance.publishedNihon1Exams;
+    var exams = AdminRepository.instance.publishedNihon1Exams;
     if (exams.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Chưa có đề Nhật 1 nào được xuất bản để luyện.')));
       return;
     }
+    // Khách chỉ được làm thử 1 đề đầu tiên.
+    if (_isGuest) exams = [exams.first];
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -347,47 +354,67 @@ class LevelSelectScreen extends StatelessWidget {
         title: Text('Luyện nói với AI', style: AppTextStyles.screenTitle),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
-            Text('Chọn trình độ / chế độ', style: AppTextStyles.sectionLabel),
-            const SizedBox(height: 4),
-            Text('Mỗi chế độ có cách dẫn dắt khác nhau.',
-                style:
-                    AppTextStyles.latin(size: 12, color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            _LevelCard(
-              emoji: '🟢',
-              color: AppColors.speaking,
-              title: 'Nhật 1 · Thi nói JPD113',
-              subtitle: 'Bốc đề · đọc to + hỏi theo tranh + tự do · AI giám khảo',
-              onTap: () => _openNihon1(context),
-            ),
-            const SizedBox(height: 12),
-            _LevelCard(
-              emoji: '🔵',
-              color: AppColors.reading,
-              title: 'Nhật 2 · Thi nói JPD123',
-              subtitle: 'Bốc đề · đọc to 45đ + 3 câu hỏi 45đ · AI giám khảo',
-              onTap: () => _openNihon2(context),
-            ),
-            const SizedBox(height: 12),
-            _LevelCard(
-              emoji: '🟣',
-              color: AppColors.kanji,
-              title: 'Nhật 3 · Thi nói JPD316',
-              subtitle: 'Hội thoại 会話 theo đề giảng viên soạn',
-              onTap: () => _openJpd316(context),
-            ),
-            const SizedBox(height: 12),
-            _LevelCard(
-              emoji: '💬',
-              color: AppColors.srsMaster,
-              title: 'Tự do',
-              subtitle: 'Trò chuyện tiếng Nhật thoải mái, không theo đề',
-              onTap: () => _startFree(context),
-            ),
-          ],
+        child: ValueListenableBuilder<AppRole>(
+          valueListenable: RoleService().currentRole,
+          builder: (context, role, child) {
+            final isGuest = role == AppRole.guest;
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              children: [
+                Text('Chọn trình độ / chế độ', style: AppTextStyles.sectionLabel),
+                const SizedBox(height: 4),
+                Text(
+                    isGuest
+                        ? 'Chế độ Khách: chỉ được làm thử 1 đề Nhật 1. Đăng nhập để mở tất cả.'
+                        : 'Mỗi chế độ có cách dẫn dắt khác nhau.',
+                    style: AppTextStyles.latin(
+                        size: 12, color: AppColors.textMuted)),
+                const SizedBox(height: 16),
+                _LevelCard(
+                  emoji: '🟢',
+                  color: AppColors.speaking,
+                  title: 'Nhật 1 · Thi nói JPD113',
+                  subtitle: isGuest
+                      ? 'Khách được làm thử 1 đề · AI giám khảo'
+                      : 'Bốc đề · đọc to + hỏi theo tranh + tự do · AI giám khảo',
+                  onTap: () => _openNihon1(context),
+                ),
+                const SizedBox(height: 12),
+                _LevelCard(
+                  emoji: '🔵',
+                  color: AppColors.reading,
+                  title: 'Nhật 2 · Thi nói JPD123',
+                  subtitle: 'Bốc đề · đọc to 45đ + 3 câu hỏi 45đ · AI giám khảo',
+                  locked: isGuest,
+                  onTap: () => isGuest
+                      ? showGuestLockDialog(context)
+                      : _openNihon2(context),
+                ),
+                const SizedBox(height: 12),
+                _LevelCard(
+                  emoji: '🟣',
+                  color: AppColors.kanji,
+                  title: 'Nhật 3 · Thi nói JPD316',
+                  subtitle: 'Hội thoại 会話 theo đề giảng viên soạn',
+                  locked: isGuest,
+                  onTap: () => isGuest
+                      ? showGuestLockDialog(context)
+                      : _openJpd316(context),
+                ),
+                const SizedBox(height: 12),
+                _LevelCard(
+                  emoji: '💬',
+                  color: AppColors.srsMaster,
+                  title: 'Tự do',
+                  subtitle: 'Trò chuyện tiếng Nhật thoải mái, không theo đề',
+                  locked: isGuest,
+                  onTap: () => isGuest
+                      ? showGuestLockDialog(context)
+                      : _startFree(context),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -400,16 +427,19 @@ class _LevelCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool locked;
   const _LevelCard({
     required this.emoji,
     required this.color,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.locked = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color effectiveColor = locked ? AppColors.textMuted : color;
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(16),
@@ -420,8 +450,8 @@ class _LevelCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.45)),
-            color: color.withValues(alpha: 0.06),
+            border: Border.all(color: effectiveColor.withValues(alpha: 0.45)),
+            color: effectiveColor.withValues(alpha: 0.06),
           ),
           child: Row(
             children: [
@@ -430,29 +460,40 @@ class _LevelCard extends StatelessWidget {
                 height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: effectiveColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                child: locked
+                    ? const Icon(Icons.lock_outline,
+                        color: AppColors.textMuted, size: 22)
+                    : Text(emoji, style: const TextStyle(fontSize: 22)),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
+                    Text(locked ? '$title 🔒' : title,
                         style: AppTextStyles.latin(
-                            size: 15, weight: FontWeight.w700, color: color)),
+                            size: 15,
+                            weight: FontWeight.w700,
+                            color: effectiveColor)),
                     const SizedBox(height: 3),
-                    Text(subtitle,
+                    Text(
+                        locked
+                            ? 'Đăng nhập tài khoản để mở khóa chế độ này.'
+                            : subtitle,
                         style: AppTextStyles.latin(
                             size: 12,
                             height: 1.35,
-                            color: AppColors.textSecondary)),
+                            color: locked
+                                ? AppColors.textFaint
+                                : AppColors.textSecondary)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: color),
+              Icon(locked ? Icons.lock_outline : Icons.chevron_right,
+                  color: effectiveColor),
             ],
           ),
         ),

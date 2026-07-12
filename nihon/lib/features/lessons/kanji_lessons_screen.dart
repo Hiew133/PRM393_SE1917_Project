@@ -3,60 +3,12 @@ import '../../core/services/data_repository.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../auth/auth_screen.dart';
+import '../../core/widgets/guest_lock_dialog.dart';
 import 'kanji_data.dart';
 import 'lesson_detail_screen.dart';
 
 class KanjiLessonsScreen extends StatelessWidget {
   const KanjiLessonsScreen({super.key});
-
-  void _showGuestLockDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: AppColors.surface,
-        title: Row(
-          children: [
-            const Icon(Icons.lock_outline, color: AppColors.vocab, size: 28),
-            const SizedBox(width: 10),
-            Text(
-              'Tính năng giới hạn',
-              style: AppTextStyles.latin(size: 18, weight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Text(
-          'Bạn đang sử dụng chế độ Khách. Vui lòng đăng ký hoặc đăng nhập tài khoản để học đầy đủ tất cả các bài học và lưu tiến trình học tập!',
-          style: AppTextStyles.latin(size: 14, color: AppColors.textSecondary, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Để sau',
-              style: AppTextStyles.latin(size: 14, color: AppColors.textMuted, weight: FontWeight.w600),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brand,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AuthScreen(startRegister: false)),
-              );
-            },
-            child: const Text('Đăng nhập ngay'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +72,7 @@ class KanjiLessonsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(24),
                         onTap: () {
                           if (isLocked) {
-                            _showGuestLockDialog(context);
+                            showGuestLockDialog(context);
                             return;
                           }
                           Navigator.push(

@@ -95,113 +95,113 @@ class MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(bottom: false, child: _tabs[_index]),
-      // floatingActionButton: ValueListenableBuilder<bool>(
-      //   valueListenable: RoleService().showAiAssistant,
-      //   builder: (context, show, child) {
-      //     if (!show) return const SizedBox.shrink();
-      //     final user = FirebaseAuth.instance.currentUser;
-      //     final isGuest = RoleService().currentRole.value == AppRole.guest || user == null;
-      //     final email = user?.email ?? '';
-      //     final initial = email.isNotEmpty ? email[0].toUpperCase() : 'G';
-      //     final firestore = FirebaseFirestore.instanceFor(
-      //       app: Firebase.app(),
-      //       databaseId: 'default',
-      //     );
-      // 
-      //     return Stack(
-      //       children: [
-      //         GestureDetector(
-      //           onTap: () {
-      //             Navigator.push(
-      //               context,
-      //               MaterialPageRoute(builder: (_) => const AIChatScreen()),
-      //             );
-      //           },
-      //           child: isGuest
-      //               ? Container(
-      //                   width: 56,
-      //                   height: 56,
-      //                   decoration: BoxDecoration(
-      //                     shape: BoxShape.circle,
-      //                     gradient: const LinearGradient(
-      //                       colors: [Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121)],
-      //                       begin: Alignment.topLeft,
-      //                       end: Alignment.bottomRight,
-      //                     ),
-      //                     boxShadow: [
-      //                       BoxShadow(
-      //                         color: const Color(0xFFE94057).withOpacity(0.4),
-      //                         blurRadius: 12,
-      //                         offset: const Offset(0, 5),
-      //                       ),
-      //                     ],
-      //                   ),
-      //                   alignment: Alignment.center,
-      //                   child: const Text(
-      //                     '🤖',
-      //                     style: TextStyle(fontSize: 28),
-      //                   ),
-      //                 )
-      //               : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      //                   stream: firestore.collection('users').doc(user.uid).snapshots(),
-      //                   builder: (context, snapshot) {
-      //                     final data = snapshot.data?.data();
-      //                     final String avatarEmoji = data?['avatarEmoji'] as String? ?? '';
-      //                     final int avatarColorIndex = data?['avatarColorIndex'] as int? ?? 0;
-      // 
-      //                     return Container(
-      //                       width: 56,
-      //                       height: 56,
-      //                       decoration: BoxDecoration(
-      //                         shape: BoxShape.circle,
-      //                         gradient: LinearGradient(
-      //                           colors: avatarEmoji.isNotEmpty
-      //                               ? kAvatarGradients[avatarColorIndex.clamp(0, kAvatarGradients.length - 1)]
-      //                               : [AppColors.brand, AppColors.vocab],
-      //                           begin: Alignment.topLeft,
-      //                           end: Alignment.bottomRight,
-      //                         ),
-      //                         boxShadow: [
-      //                           BoxShadow(
-      //                             color: (avatarEmoji.isNotEmpty
-      //                                     ? kAvatarGradients[avatarColorIndex.clamp(0, kAvatarGradients.length - 1)][0]
-      //                                     : AppColors.brand)
-      //                                 .withOpacity(0.4),
-      //                             blurRadius: 12,
-      //                             offset: const Offset(0, 5),
-      //                           ),
-      //                         ],
-      //                       ),
-      //                       alignment: Alignment.center,
-      //                       child: Text(
-      //                         avatarEmoji.isNotEmpty ? avatarEmoji : initial,
-      //                         style: TextStyle(
-      //                           fontSize: avatarEmoji.isNotEmpty ? 28 : 22,
-      //                           fontWeight: FontWeight.w900,
-      //                           color: Colors.white,
-      //                         ),
-      //                       ),
-      //                     );
-      //                   },
-      //                 ),
-      //         ),
-      //         Positioned(
-      //           right: 1,
-      //           bottom: 1,
-      //           child: Container(
-      //             width: 13,
-      //             height: 13,
-      //             decoration: BoxDecoration(
-      //               color: const Color(0xFF2ECC71),
-      //               shape: BoxShape.circle,
-      //               border: Border.all(color: Colors.white, width: 2),
-      //             ),
-      //           ),
-      //         ),
-      //       ],
-      //     );
-      //   },
-      // ),
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: RoleService().showAiAssistant,
+        builder: (context, show, child) {
+          if (!show) return const SizedBox.shrink();
+          final user = FirebaseAuth.instance.currentUser;
+          final isGuest = RoleService().currentRole.value == AppRole.guest || user == null;
+          final email = user?.email ?? '';
+          final initial = email.isNotEmpty ? email[0].toUpperCase() : 'G';
+          final firestore = FirebaseFirestore.instanceFor(
+            app: Firebase.app(),
+            databaseId: 'default',
+          );
+      
+          return Stack(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                  );
+                },
+                child: isGuest
+                    ? Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE94057).withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '🤖',
+                          style: TextStyle(fontSize: 28),
+                        ),
+                      )
+                    : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: firestore.collection('users').doc(user.uid).snapshots(),
+                        builder: (context, snapshot) {
+                          final data = snapshot.data?.data();
+                          final String avatarEmoji = data?['avatarEmoji'] as String? ?? '';
+                          final int avatarColorIndex = data?['avatarColorIndex'] as int? ?? 0;
+      
+                          return Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: avatarEmoji.isNotEmpty
+                                    ? kAvatarGradients[avatarColorIndex.clamp(0, kAvatarGradients.length - 1)]
+                                    : [AppColors.brand, AppColors.vocab],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (avatarEmoji.isNotEmpty
+                                          ? kAvatarGradients[avatarColorIndex.clamp(0, kAvatarGradients.length - 1)][0]
+                                          : AppColors.brand)
+                                      .withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              avatarEmoji.isNotEmpty ? avatarEmoji : initial,
+                              style: TextStyle(
+                                fontSize: avatarEmoji.isNotEmpty ? 28 : 22,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Positioned(
+                right: 1,
+                bottom: 1,
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2ECC71),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
