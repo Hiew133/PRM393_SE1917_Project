@@ -73,7 +73,9 @@ class DailyGoalCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Còn $remaining XP để đạt mục tiêu hôm nay',
+            remaining == 0
+                ? 'Chúc mừng! Bạn đã đạt mục tiêu hôm nay 🎉'
+                : 'Còn $remaining XP để đạt mục tiêu hôm nay',
             style: AppTextStyles.latin(size: 11, color: AppColors.textFaint),
           ),
         ],

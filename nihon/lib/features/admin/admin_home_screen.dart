@@ -1,37 +1,56 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/data_repository.dart';
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_config.dart';
+import '../crud/crud_management_screen.dart';
 import '../review/review_screen.dart';
 import '../welcome/welcome_screen.dart';
+import 'admin_ai_settings_screen.dart';
 import 'speaking/data/admin_repository.dart';
 import 'speaking/speaking_admin_screen.dart';
 
-/// Trang chủ Admin cấp APP — bày cả 5 kỹ năng như Dashboard học viên, nhưng
-/// hiện CHỈ 話す (Nói) là mở; 4 kỹ năng còn lại để placeholder "sắp có".
-/// Vào từ nút "Giảng viên" ở màn Welcome. Chạm 話す → [SpeakingAdminScreen].
-/// (TODO: sau này chặn bằng phân quyền role khi đăng nhập thay cho mã PIN cũ.)
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
 
   void _comingSoon(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Phần "$label" chưa được hỗ trợ — hiện chỉ làm phần Nói.'),
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Phần "$label" chưa được hỗ trợ.'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _openManager(BuildContext context, int section) {
+    RoleService().setRole(AppRole.admin);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminContentManagerScreen(section: section),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final repo = AdminRepository.instance;
+    final speakingRepo = AdminRepository.instance;
+    final dataRepository = DataRepository();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AnimatedBuilder(
-          animation: repo,
+          animation: speakingRepo,
           builder: (context, _) {
-            final totalSpeaking = repo.exams.length + repo.nihon1Exams.length;
+            final totalSpeaking =
+                speakingRepo.exams.length + speakingRepo.nihon1Exams.length;
+            final vocabularyCount = dataRepository.lessons.fold<int>(
+              0,
+              (total, lesson) => total + lesson.kanjis.length,
+            );
+
             return Column(
               children: [
                 _header(context),
@@ -42,7 +61,6 @@ class AdminHomeScreen extends StatelessWidget {
                       Text('Nội dung đang mở',
                           style: AppTextStyles.sectionLabel),
                       const SizedBox(height: 12),
-                      // 話す — soạn đề thi Nói.
                       _ActiveSkillCard(
                         jp: '話す',
                         vi: 'Luyện nói',
@@ -51,26 +69,69 @@ class AdminHomeScreen extends StatelessWidget {
                         color: AppColors.speaking,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                              builder: (_) => const SpeakingAdminScreen()),
+                            builder: (_) => const SpeakingAdminScreen(),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      // 語彙 — mở màn Ôn tập ở chế độ Admin (CRUD giáo trình,
-                      // bài học, từ vựng trên Firestore). Thoát ra thì tắt
-                      // admin để học viên không thấy nút chỉnh sửa.
+                      _ActiveSkillCard(
+                        jp: '漢字',
+                        vi: 'Kanji',
+                        stat: '$vocabularyCount chữ',
+                        desc: 'Quản lý giáo trình, bài học, Kanji',
+                        color: AppColors.kanji,
+                        onTap: () => _openManager(context, 1),
+                      ),
+                      const SizedBox(height: 10),
                       _ActiveSkillCard(
                         jp: '語彙',
                         vi: 'Từ vựng',
-                        stat: 'CRUD',
-                        desc: 'Quản lý giáo trình, bài học, từ vựng (Ôn tập)',
+                        stat: 'Firebase',
+                        desc: 'Quản lý giáo trình, bài học và từ vựng',
                         color: AppColors.vocab,
                         onTap: () {
                           AppConfig.isAdmin.value = true;
-                          Navigator.of(context)
-                              .push(MaterialPageRoute(
-                                  builder: (_) => const ReviewScreen()))
-                              .then((_) => AppConfig.isAdmin.value = false);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ReviewScreen(),
+                            ),
+                          );
                         },
+                      ),
+                      const SizedBox(height: 10),
+                      _ActiveSkillCard(
+                        jp: '文法',
+                        vi: 'Ngữ pháp',
+                        stat: '${dataRepository.grammarPoints.length} mẫu',
+                        desc: 'Quản lý mẫu câu, ghi chú và ví dụ',
+                        color: AppColors.reading,
+                        onTap: () => _openManager(context, 2),
+                      ),
+                      const SizedBox(height: 10),
+                      _ActiveSkillCard(
+                        jp: '人',
+                        vi: 'Tài khoản',
+                        stat: 'User',
+                        desc: 'Quản lý người dùng và phân quyền',
+                        color: AppColors.brandDark,
+                        onTap: () => _openManager(context, 0),
+                      ),
+                      /*
+                            'Trợ lý học từ vựng, ngữ pháp và lộ trình ôn tập',
+                      */
+                      const SizedBox(height: 10),
+                      _ActiveSkillCard(
+                        jp: 'Key',
+                        vi: 'API Key',
+                        stat: 'Gemini',
+                        desc:
+                            'Cấu hình API key cho Nihon AI và chấm phát âm',
+                        color: AppColors.listening,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AdminAISettingsScreen(),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 22),
                       Text('Sắp có', style: AppTextStyles.sectionLabel),
@@ -83,12 +144,12 @@ class AdminHomeScreen extends StatelessWidget {
                         crossAxisSpacing: 10,
                         childAspectRatio: 1.55,
                         children: [
-                          for (final s in _comingSkills)
+                          for (final skill in _comingSkills)
                             _ComingSkillCard(
-                              jp: s.$1,
-                              vi: s.$2,
-                              color: s.$3,
-                              onTap: () => _comingSoon(context, s.$2),
+                              jp: skill.$1,
+                              vi: skill.$2,
+                              color: skill.$3,
+                              onTap: () => _comingSoon(context, skill.$2),
                             ),
                         ],
                       ),
@@ -103,10 +164,7 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  // Kỹ năng chưa mở (jp, vi, màu). Nghe hiện chưa có phần quản trị —
-  // bài nghe đang đóng gói sẵn trong assets, không soạn qua Firestore.
   static const List<(String, String, Color)> _comingSkills = [
-    ('漢字', 'Kanji', AppColors.kanji),
     ('読む', 'Đọc hiểu', AppColors.reading),
     ('聴く', 'Nghe', AppColors.listening),
   ];
@@ -120,19 +178,19 @@ class AdminHomeScreen extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
-            // Về thẳng trang đầu (đăng nhập / Welcome).
             onTap: () => Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const WelcomeScreen()),
               (route) => false,
             ),
             child: Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(10)),
-              child:
-                  const Icon(Icons.chevron_left, color: AppColors.textPrimary),
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.chevron_left,
+                  color: AppColors.textPrimary),
             ),
           ),
           const SizedBox(width: 12),
@@ -142,30 +200,47 @@ class AdminHomeScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('Trang Giảng viên',
+                    Flexible(
+                      child: Text(
+                        'Trang Giảng viên',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.latin(
-                            size: 19, weight: FontWeight.w700)),
+                          size: 22,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.textPrimary,
                         borderRadius: BorderRadius.circular(5),
                       ),
-                      child: Text('ADMIN',
-                          style: AppTextStyles.latin(
-                              size: 9,
-                              weight: FontWeight.w800,
-                              color: const Color(0xFFF7C547),
-                              letterSpacing: 0.8)),
+                      child: Text(
+                        'ADMIN',
+                        style: AppTextStyles.latin(
+                          size: 9,
+                          weight: FontWeight.w800,
+                          color: const Color(0xFFF7C547),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text('Quản lý nội dung học tập',
-                    style: AppTextStyles.latin(
-                        size: 12, color: AppColors.textMuted)),
+                Text(
+                  'Quản lý nội dung học tập',
+                  style: AppTextStyles.latin(
+                    size: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),
@@ -175,7 +250,6 @@ class AdminHomeScreen extends StatelessWidget {
   }
 }
 
-/// Thẻ kỹ năng ĐANG MỞ — nổi bật, full-width.
 class _ActiveSkillCard extends StatelessWidget {
   final String jp;
   final String vi;
@@ -183,6 +257,7 @@ class _ActiveSkillCard extends StatelessWidget {
   final String desc;
   final Color color;
   final VoidCallback onTap;
+
   const _ActiveSkillCard({
     required this.jp,
     required this.vi,
@@ -210,55 +285,77 @@ class _ActiveSkillCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 64,
+                height: 64,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text(jp,
-                    style: AppTextStyles.jp(
-                        size: 22, weight: FontWeight.w700, color: color)),
+                child: Text(
+                  jp,
+                  style: AppTextStyles.jp(
+                    size: 24,
+                    weight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(vi,
+                        Flexible(
+                          child: Text(
+                            vi,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.latin(
-                                size: 16,
-                                weight: FontWeight.w700,
-                                color: color)),
+                              size: 18,
+                              weight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(7),
                           ),
-                          child: Text(stat,
-                              style: AppTextStyles.latin(
-                                  size: 10,
-                                  weight: FontWeight.w700,
-                                  color: color)),
+                          child: Text(
+                            stat,
+                            style: AppTextStyles.latin(
+                              size: 10,
+                              weight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(desc,
-                        style: AppTextStyles.latin(
-                            size: 12,
-                            height: 1.35,
-                            color: AppColors.textSecondary)),
+                    const SizedBox(height: 5),
+                    Text(
+                      desc,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.latin(
+                        size: 13,
+                        height: 1.35,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: color),
+              Icon(Icons.chevron_right, color: color, size: 28),
             ],
           ),
         ),
@@ -267,12 +364,12 @@ class _ActiveSkillCard extends StatelessWidget {
   }
 }
 
-/// Thẻ kỹ năng CHƯA MỞ — mờ, có nhãn "Sắp có".
 class _ComingSkillCard extends StatelessWidget {
   final String jp;
   final String vi;
   final Color color;
   final VoidCallback onTap;
+
   const _ComingSkillCard({
     required this.jp,
     required this.vi,
@@ -289,7 +386,7 @@ class _ComingSkillCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(13),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
@@ -301,40 +398,49 @@ class _ComingSkillCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 44,
+                    height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(jp,
-                        style: AppTextStyles.jp(
-                            size: 17,
-                            weight: FontWeight.w700,
-                            color: color.withValues(alpha: 0.6))),
+                    child: Text(
+                      jp,
+                      style: AppTextStyles.jp(
+                        size: 18,
+                        weight: FontWeight.w800,
+                        color: color.withValues(alpha: 0.6),
+                      ),
+                    ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                    child: Text('Sắp có',
-                        style: AppTextStyles.latin(
-                            size: 9,
-                            weight: FontWeight.w700,
-                            color: AppColors.textMuted)),
+                    child: Text(
+                      'Sắp có',
+                      style: AppTextStyles.latin(
+                        size: 10,
+                        weight: FontWeight.w700,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const Spacer(),
-              Text(vi,
-                  style: AppTextStyles.latin(
-                      size: 13,
-                      weight: FontWeight.w700,
-                      color: AppColors.textSecondary)),
+              Text(
+                vi,
+                style: AppTextStyles.latin(
+                  size: 14,
+                  weight: FontWeight.w800,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
         ),

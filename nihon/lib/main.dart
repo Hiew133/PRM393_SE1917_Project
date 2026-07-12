@@ -3,8 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'firebase_options.dart';
 import 'app.dart';
+import 'core/services/data_repository.dart';
+import 'core/services/speech_assessment_service.dart';
+import 'firebase_options.dart';
 // Tool seed dữ liệu Firestore — bỏ comment import này cùng 2 dòng gọi trong
 // main() khi cần upload dữ liệu bài học.
 // import 'core/utils/firebase_uploader.dart';
@@ -51,6 +53,9 @@ void main() async {
   // bỏ comment khi cần upload dữ liệu bài học rồi comment lại.
   //await uploadNhat2Lesson7Data();
   //await checkDatabaseCounts();
+
+  await SpeechAssessmentService().loadSavedApiKey();
+  DataRepository().init();
 
   runApp(const SakuraApp());
 }

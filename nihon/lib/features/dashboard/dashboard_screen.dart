@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+import '../../core/services/data_repository.dart';
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
+import '../../data/models/srs_card.dart';
+import '../lessons/kanji_lessons_screen.dart';
 import '../listening/screens/listening_list_screen.dart';
 import '../speaking/level_select_screen.dart';
 import '../welcome/welcome_screen.dart';
@@ -30,14 +37,57 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
+    void openKanji() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const KanjiLessonsScreen()),
+      );
+    }
+
+    final repository = DataRepository();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
-        const DailyGoalCard(current: 30, target: 50),
+        ValueListenableBuilder<Map<String, int>>(
+          valueListenable: repository.xpHistoryNotifier,
+          builder: (context, history, child) {
+            final now = DateTime.now();
+            final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+            final todayXp = history[todayStr] ?? 0;
+            return DailyGoalCard(
+              current: todayXp,
+              target: repository.dailyGoal,
+            );
+          },
+        ),
         const SizedBox(height: 12),
-        ResumeCard(onContinue: onStartVocabReview),
+        ValueListenableBuilder<List<CardProgress>>(
+          valueListenable: repository.srsCardsNotifier,
+          builder: (context, srsList, child) {
+            final now = DateTime.now();
+            final dueCount = srsList
+                .where((card) => !card.nextReview.isAfter(now))
+                .length;
+
+            final String title;
+            final String subtitle;
+            if (dueCount > 0) {
+              title = '語彙 · Ôn tập';
+              subtitle = 'Bạn đang có $dueCount từ vựng cần ôn tập ngay';
+            } else {
+              title = '語彙 · Đã hoàn thành';
+              subtitle = 'Tuyệt vời! Bạn không có từ vựng cần ôn hôm nay';
+            }
+
+            return ResumeCard(
+              title: title,
+              subtitle: subtitle,
+              onContinue: onStartVocabReview,
+            );
+          },
+        ),
         const SizedBox(height: 20),
         Text('Các kỹ năng', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 12),
@@ -55,6 +105,7 @@ class DashboardScreen extends StatelessWidget {
                 skill: skill,
                 onTap: switch (skill.jpLabel) {
                   '語彙' => onStartVocabReview,
+                  '漢字' => openKanji,
                   '聴く' => openListening,
                   _ => null,
                 },
@@ -129,69 +180,139 @@ class _SpeakingButton extends StatelessWidget {
   }
 }
 
+const List<List<Color>> kAvatarGradients = [
+  [Color(0xFFFF9A9E), Color(0xFFFECFEF)], // Soft Pink
+  [Color(0xFFA1C4FD), Color(0xFFC2E9FB)], // Sky Blue
+  [Color(0xFF84FAB0), Color(0xFF8FD3F4)], // Mint Green
+  [Color(0xFFFAD0C4), Color(0xFFFFD1FF)], // Peach Pink
+  [Color(0xFFF6D365), Color(0xFFFDA085)], // Sunset Orange
+  [Color(0xFFA6C0FE), Color(0xFFF1EEFD)], // Lavender Purple
+];
+
 class _UserHeader extends StatelessWidget {
   const _UserHeader();
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final role = RoleService().currentRole.value;
+
+    final String displayName;
+    if (role == AppRole.guest) {
+      displayName = 'Guest';
+    } else if (user != null && user.email != null) {
+      displayName = user.email!;
+    } else {
+      displayName = 'Guest';
+    }
+
+    final String initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'G';
+    final isGuest = role == AppRole.guest || user == null;
+
+    final firestore = FirebaseFirestore.instanceFor(
+      app: Firebase.app(),
+      databaseId: 'default',
+    );
+
     return Row(
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [AppColors.brand, AppColors.vocab],
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'M',
-            style: AppTextStyles.latin(
-              size: 18,
-              weight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'おはよう 🌸',
-              style: AppTextStyles.latin(size: 12, color: AppColors.textMuted),
-            ),
-            Text(
-              'K',
-              style: AppTextStyles.latin(size: 17, weight: FontWeight.w700),
-            ),
-          ],
-        ),
-        const Spacer(),
-        // Streak
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFCD88A)),
-          ),
-          child: Row(
-            children: [
-              const Text('🔥', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 6),
-              Text(
-                '15',
-                style: AppTextStyles.latin(
-                  size: 18,
-                  weight: FontWeight.w800,
-                  color: AppColors.listening,
+        isGuest
+            ? Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppColors.brand, AppColors.vocab],
+                  ),
                 ),
+                alignment: Alignment.center,
+                child: Text(
+                  initial,
+                  style: AppTextStyles.latin(
+                    size: 18,
+                    weight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: firestore.collection('users').doc(user.uid).snapshots(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data();
+                  final String avatarEmoji = data?['avatarEmoji'] as String? ?? '';
+                  final int avatarColorIndex = data?['avatarColorIndex'] as int? ?? 0;
+
+                  return Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: avatarEmoji.isNotEmpty
+                            ? kAvatarGradients[avatarColorIndex.clamp(0, kAvatarGradients.length - 1)]
+                            : [AppColors.brand, AppColors.vocab],
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      avatarEmoji.isNotEmpty ? avatarEmoji : initial,
+                      style: TextStyle(
+                        fontSize: avatarEmoji.isNotEmpty ? 24 : 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
+              ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'おはよう 🌸',
+                style: AppTextStyles.latin(size: 12, color: AppColors.textMuted),
+              ),
+              Text(
+                displayName,
+                style: AppTextStyles.latin(size: 17, weight: FontWeight.w700),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
+        ),
+        const SizedBox(width: 12),
+        // Streak
+        ValueListenableBuilder<Map<String, int>>(
+          valueListenable: DataRepository().xpHistoryNotifier,
+          builder: (context, _, child) {
+            final streakCount = DataRepository().streak;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFFCD88A)),
+              ),
+              child: Row(
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$streakCount',
+                    style: AppTextStyles.latin(
+                      size: 18,
+                      weight: FontWeight.w800,
+                      color: AppColors.listening,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(width: 8),
         // Nút về trang đầu (đăng nhập / Welcome).

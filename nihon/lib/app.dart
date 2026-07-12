@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/welcome/welcome_screen.dart';
+import 'features/auth/auth_gate.dart';
 
 /// Widget gốc của app さくら.
 class SakuraApp extends StatelessWidget {
@@ -13,7 +13,7 @@ class SakuraApp extends StatelessWidget {
       title: 'さくら – Japanese Learning',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const WelcomeScreen(),
+      home: const AuthGate(),
     );
   }
 }

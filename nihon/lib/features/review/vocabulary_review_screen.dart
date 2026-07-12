@@ -45,6 +45,17 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
   late TextEditingController _editingViController;
   bool _isEditingCard = false;
 
+  String get _normalizedBook {
+    switch (widget.book) {
+      case 'nhat_1':
+        return 'Nhật 1';
+      case 'nhat_2':
+        return 'Nhật 2';
+      default:
+        return widget.book;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,15 +104,20 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
         databaseId: 'default',
       );
 
-      // Lấy từ vựng theo sách và bài học được truyền vào
-      final QuerySnapshot snapshot = await firestore
+      // Lấy từ vựng theo sách và bài học được truyền vào. Một số màn hình cũ
+      // truyền slug như "nhat_1", trong khi Firestore lưu "Nhật 1".
+      QuerySnapshot snapshot = await firestore
           .collection('vocabulary')
-          .where('book', isEqualTo: widget.book)
+          .where('book', isEqualTo: _normalizedBook)
           .where('lesson', isEqualTo: widget.lesson)
           .get();
 
-      if (snapshot.docs.isEmpty) {
-        throw Exception("Không tìm thấy từ vựng nào trên Firestore!");
+      if (snapshot.docs.isEmpty && _normalizedBook != widget.book) {
+        snapshot = await firestore
+            .collection('vocabulary')
+            .where('book', isEqualTo: widget.book)
+            .where('lesson', isEqualTo: widget.lesson)
+            .get();
       }
 
       final List<VocabCard> loadedCards = snapshot.docs.map((doc) {
@@ -129,7 +145,7 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
           exampleJp: '例文はまだありません。', 
           exampleVi: 'Chưa có ví dụ cho từ này.',
           wordTypeJp: '単語',
-          wordTypeVi: 'Bài ${data['lesson'] ?? 1}',
+          wordTypeVi: 'Bài ${data['lesson'] ?? widget.lesson}',
           stage: SrsStage.apprentice1,
         );
       }).toList();
@@ -448,7 +464,12 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
         onRestart: _restartSession,
       );
     } else if (_cards.isEmpty) {
-      body = const Center(child: Text('Không có dữ liệu từ vựng.'));
+      body = _EmptyVocabularyView(
+        book: _normalizedBook,
+        lesson: widget.lesson,
+        onBack: () => Navigator.pop(context),
+        onRetry: _loadCards,
+      );
     } else {
       final card = _currentCard!;
       body = Column(
@@ -687,6 +708,81 @@ class _BadgeRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EmptyVocabularyView extends StatelessWidget {
+  final String book;
+  final int lesson;
+  final VoidCallback onBack;
+  final VoidCallback onRetry;
+
+  const _EmptyVocabularyView({
+    required this.book,
+    required this.lesson,
+    required this.onBack,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.menu_book_outlined, color: AppColors.vocab, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Chưa có từ vựng',
+            style: AppTextStyles.latin(size: 18, weight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$book - Bài $lesson hiện chưa có từ vựng trên Firestore.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.latin(size: 13, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.vocab,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Thử lại'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onBack,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                side: const BorderSide(color: AppColors.border, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'Quay về',
+                style: AppTextStyles.latin(
+                  size: 15,
+                  weight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

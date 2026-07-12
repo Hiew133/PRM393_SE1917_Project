@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../admin/admin_home_screen.dart';
+import '../auth/auth_screen.dart';
 import '../home/main_navigation.dart';
 
 /// Màn 01 – Welcome / Onboarding.
@@ -10,8 +11,15 @@ class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   void _start(BuildContext context) {
+    RoleService().useGuestRole();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainNavigation()),
+    );
+  }
+
+  void _openAuth(BuildContext context, {bool register = false}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AuthScreen(startRegister: register)),
     );
   }
 
@@ -100,7 +108,9 @@ class WelcomeScreen extends StatelessWidget {
                           child: const Text('Bắt đầu miễn phí'),
                         ),
                         const SizedBox(height: 16),
-                        RichText(
+                        GestureDetector(
+                          onTap: () => _openAuth(context),
+                          child: RichText(
                           text: TextSpan(
                             style: AppTextStyles.latin(
                               size: 14,
@@ -119,12 +129,10 @@ class WelcomeScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        ),
                         const SizedBox(height: 14),
                         GestureDetector(
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const AdminHomeScreen()),
-                          ),
+                          onTap: () => _openAuth(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),

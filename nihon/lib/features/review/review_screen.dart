@@ -23,7 +23,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   List<String> _books = ['Nhật 1', 'Nhật 2'];
   Map<String, dynamic> _booksMetadata = {
     'Nhật 1': {'title': 'Nhật 1', 'desc': 'N5 - N4 (Cơ bản)'},
-    'Nhật 2': {'title': 'Nhật 2', 'desc': 'N3 - N2 (Trung cấp)'},
+    'Nhật 2': {'title': 'Nhật 2', 'desc': 'N5 - N4 (Trung cấp)'},
   };
   Map<String, List<int>> _bookLessons = {};
 
@@ -65,6 +65,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
             if (data['booksMetadata'] != null) {
               _booksMetadata = Map<String, dynamic>.from(data['booksMetadata']);
+              if (_booksMetadata['Nhật 2'] != null &&
+                  _booksMetadata['Nhật 2']['desc'] == 'N3 - N2 (Trung cấp)') {
+                _booksMetadata['Nhật 2']['desc'] = 'N5 - N4 (Trung cấp)';
+                firestore.collection('settings').doc('review_screen').update({
+                  'booksMetadata': _booksMetadata,
+                }).catchError((e) => print("Lỗi khi tự động cập nhật mô tả Nhật 2: $e"));
+              }
             } else {
               // Hỗ trợ tương thích ngược
               _booksMetadata = {
@@ -74,7 +81,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 },
                 'Nhật 2': {
                   'title': data['nhat2Title'] as String? ?? 'Nhật 2',
-                  'desc': data['nhat2Desc'] as String? ?? 'N3 - N2 (Trung cấp)',
+                  'desc': data['nhat2Desc'] as String? ?? 'N5 - N4 (Trung cấp)',
                 },
               };
             }
@@ -103,7 +110,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           'books': ['Nhật 1', 'Nhật 2'],
           'booksMetadata': {
             'Nhật 1': {'title': 'Nhật 1', 'desc': 'N5 - N4 (Cơ bản)'},
-            'Nhật 2': {'title': 'Nhật 2', 'desc': 'N3 - N2 (Trung cấp)'},
+            'Nhật 2': {'title': 'Nhật 2', 'desc': 'N5 - N4 (Trung cấp)'},
           },
           'lessons': {},
           'lessonTitles': {},
@@ -1757,3 +1764,5 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 }
+
+

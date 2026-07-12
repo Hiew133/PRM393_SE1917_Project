@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../listening/screens/listening_list_screen.dart';
+import 'grammar_lessons_screen.dart';
 
 class LessonsScreen extends StatelessWidget {
   const LessonsScreen({super.key});
@@ -40,13 +40,14 @@ class LessonsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // Nút Ngữ pháp
             InkWell(
               borderRadius: BorderRadius.circular(20),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const ListeningListScreen(),
+                    builder: (_) => const GrammarLessonsScreen(),
                   ),
                 );
               },
@@ -64,10 +65,10 @@ class LessonsScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Color(0xFFFFF2DC),
+                      backgroundColor: Color(0xFFE6FFFA),
                       child: Icon(
-                        Icons.headphones,
-                        color: Color(0xFFE8953C),
+                        Icons.format_list_bulleted_rounded,
+                        color: AppColors.reading,
                         size: 30,
                       ),
                     ),
@@ -77,7 +78,7 @@ class LessonsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Listening',
+                            'Ngữ pháp',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -85,7 +86,7 @@ class LessonsScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Luyện nghe tiếng Nhật qua hội thoại',
+                            'Học các cấu trúc ngữ pháp tiếng Nhật',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.textMuted,
