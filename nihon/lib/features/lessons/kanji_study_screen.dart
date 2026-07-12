@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/services/data_repository.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -38,6 +39,7 @@ class _KanjiStudyScreenState extends State<KanjiStudyScreen> {
       0; // 0: Cách viết (Stroke order), 1: Ý nghĩa & Cách đọc, 2: Từ liên quan
   int _activeStrokeIndex = 0;
   List<List<Offset>> _completedUserPaths = [];
+  bool _hasEarnedXpForThisKanji = false;
 
   String? _mnemonicStory;
   bool _isLoadingMnemonic = false;
@@ -514,7 +516,12 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
 
                           // Nếu viết xong tất cả các nét
                           if (_activeStrokeIndex >= totalStrokes) {
-                            Future.microtask(() => _showSuccessDialog());
+                            final wasAlreadyEarned = _hasEarnedXpForThisKanji;
+                            if (!_hasEarnedXpForThisKanji) {
+                              _hasEarnedXpForThisKanji = true;
+                              DataRepository().addXp(10);
+                            }
+                            Future.microtask(() => _showSuccessDialog(earnedXp: !wasAlreadyEarned));
                           }
                         },
                       ),
@@ -552,7 +559,7 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Chế độ Khách chỉ cho phép tập viết các chữ Hán cơ bản như 才, 人, 私. Đăng ký tài khoản để mở khóa toàn bộ kho chữ Hán nhé!',
+                                  'Chế độ Khách chỉ cho phép tập viết các chữ Hán cơ bản như 才, Nhân, 私. Đăng ký tài khoản để mở khóa toàn bộ kho chữ Hán nhé!',
                                   textAlign: TextAlign.center,
                                   style: AppTextStyles.latin(size: 12, color: AppColors.textSecondary, height: 1.4),
                                 ),
@@ -672,19 +679,19 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-        tooltip: 'Hỏi Trợ lý AI',
-        child: const Icon(Icons.psychology_rounded, size: 28),
-        onPressed: () {
-          AITutorBottomSheet.show(
-            context,
-            topic: widget.kanji.character,
-            type: 'kanji',
-          );
-        },
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   backgroundColor: Colors.blueAccent,
+      //   foregroundColor: Colors.white,
+      //   tooltip: 'Hỏi Trợ lý AI',
+      //   child: const Icon(Icons.psychology_rounded, size: 28),
+      //   onPressed: () {
+      //     AITutorBottomSheet.show(
+      //       context,
+      //       topic: widget.kanji.character,
+      //       type: 'kanji',
+      //     );
+      //   },
+      // ),
     );
   }
 
@@ -770,7 +777,7 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
     );
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog({required bool earnedXp}) {
     showDialog(
       context: context,
       builder: (context) {
@@ -792,7 +799,9 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
             ],
           ),
           content: Text(
-            'Bạn đã hoàn thành viết đúng chữ Hán "${widget.kanji.character}" theo đúng thứ tự các nét!',
+            earnedXp
+                ? 'Bạn đã hoàn thành viết đúng chữ Hán "${widget.kanji.character}" theo đúng thứ tự các nét và nhận được +10 XP!'
+                : 'Bạn đã hoàn thành viết đúng chữ Hán "${widget.kanji.character}" theo đúng thứ tự các nét!',
             style:
                 AppTextStyles.latin(size: 14, color: AppColors.textSecondary),
           ),

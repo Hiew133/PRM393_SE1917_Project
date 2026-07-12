@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
 import '../../data/models/srs_card.dart';
+import '../review/kanji_review_screen.dart';
 import '../lessons/kanji_lessons_screen.dart';
 import '../listening/screens/listening_list_screen.dart';
 import '../speaking/level_select_screen.dart';
@@ -74,17 +75,21 @@ class DashboardScreen extends StatelessWidget {
             final String title;
             final String subtitle;
             if (dueCount > 0) {
-              title = '語彙 · Ôn tập';
-              subtitle = 'Bạn đang có $dueCount từ vựng cần ôn tập ngay';
+              title = '漢字 · Ôn tập';
+              subtitle = 'Bạn đang có $dueCount chữ Kanji cần ôn tập ngay';
             } else {
-              title = '語彙 · Đã hoàn thành';
-              subtitle = 'Tuyệt vời! Bạn không có từ vựng cần ôn hôm nay';
+              title = '漢字 · Đã hoàn thành';
+              subtitle = 'Tuyệt vời! Bạn không có chữ Kanji cần ôn hôm nay';
             }
 
             return ResumeCard(
               title: title,
               subtitle: subtitle,
-              onContinue: onStartVocabReview,
+              onContinue: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const KanjiReviewScreen()),
+                );
+              },
             );
           },
         ),

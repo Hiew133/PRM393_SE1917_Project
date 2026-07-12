@@ -20,7 +20,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
   void initState() {
     super.initState();
     _repository.lessonsNotifier.addListener(_refresh);
-    _repository.grammarPointsNotifier.addListener(_refresh);
     _repository.srsCardsNotifier.addListener(_refresh);
     _repository.xpHistoryNotifier.addListener(_refresh);
     RoleService().currentRole.addListener(_refresh);
@@ -29,7 +28,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void dispose() {
     _repository.lessonsNotifier.removeListener(_refresh);
-    _repository.grammarPointsNotifier.removeListener(_refresh);
     _repository.srsCardsNotifier.removeListener(_refresh);
     _repository.xpHistoryNotifier.removeListener(_refresh);
     RoleService().currentRole.removeListener(_refresh);
@@ -95,7 +93,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             const SizedBox(height: 10),
             _LearningDataTile(
               icon: Icons.style_rounded,
-              title: 'Từ vựng ôn tập',
+              title: 'Kanji ôn tập',
               value: '${stats.totalCards}',
               subtitle: '${stats.dueCards} thẻ đang đến hạn',
               color: AppColors.vocab,
@@ -103,18 +101,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
             const SizedBox(height: 10),
             _LearningDataTile(
               icon: Icons.psychology_alt_rounded,
-              title: 'Kanji / Từ vựng trong bài',
+              title: 'Chữ Kanji trong bài',
               value: '${stats.kanjiCount}',
               subtitle: 'Lấy từ dữ liệu bài học hiện có',
               color: AppColors.kanji,
-            ),
-            const SizedBox(height: 10),
-            _LearningDataTile(
-              icon: Icons.rule_rounded,
-              title: 'Ngữ pháp',
-              value: '${stats.grammarCount}',
-              subtitle: 'Đồng bộ từ kho ngữ pháp',
-              color: AppColors.reading,
             ),
             const SizedBox(height: 22),
             const _SectionTitle('Cấp độ SRS'),
@@ -195,7 +185,6 @@ class _GuestProgressView extends StatelessWidget {
 class _ProgressStats {
   final int lessonCount;
   final int kanjiCount;
-  final int grammarCount;
   final int totalCards;
   final int dueCards;
   final int apprenticeCards;
@@ -210,7 +199,6 @@ class _ProgressStats {
   const _ProgressStats({
     required this.lessonCount,
     required this.kanjiCount,
-    required this.grammarCount,
     required this.totalCards,
     required this.dueCards,
     required this.apprenticeCards,
@@ -225,7 +213,11 @@ class _ProgressStats {
 
   factory _ProgressStats.fromRepository(DataRepository repository) {
     final now = DateTime.now();
-    final cards = repository.srsCards;
+    final cards = repository.srsCards
+        .where((c) =>
+            c.card.category.contains('Kanji') ||
+            c.card.category.contains('Hán tự'))
+        .toList();
     final todayKey = _dateKey(now);
 
     return _ProgressStats(
@@ -234,7 +226,6 @@ class _ProgressStats {
         0,
         (total, lesson) => total + lesson.kanjis.length,
       ),
-      grammarCount: repository.grammarPoints.length,
       totalCards: cards.length,
       dueCards: cards.where((card) => !card.nextReview.isAfter(now)).length,
       apprenticeCards: _countByStage(cards, '見習い'),
@@ -351,7 +342,7 @@ class _HeroProgressCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Đang theo dõi ${stats.lessonCount} bài học, ${stats.kanjiCount} mục từ, ${stats.grammarCount} ngữ pháp và ${stats.totalCards} thẻ SRS.',
+                  'Đang theo dõi ${stats.lessonCount} bài học, ${stats.kanjiCount} chữ Kanji trong bài học và ${stats.totalCards} thẻ SRS ôn tập.',
                   style: AppTextStyles.latin(
                     size: 12,
                     color: Colors.white70,
@@ -795,11 +786,11 @@ class _BadgesGrid extends StatelessWidget {
         isUnlocked: stats.todayXp >= stats.dailyGoal,
       ),
       _BadgeItem(
-        title: 'Học giả',
-        description: 'Có 5 mẫu ngữ pháp',
+        title: 'Học giả Kanji',
+        description: 'Có 10 chữ Kanji',
         icon: Icons.school_rounded,
         color: AppColors.reading,
-        isUnlocked: stats.grammarCount >= 5,
+        isUnlocked: stats.kanjiCount >= 10,
       ),
       _BadgeItem(
         title: 'Kỷ luật',

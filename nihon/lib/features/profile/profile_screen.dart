@@ -718,25 +718,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.border),
-                ValueListenableBuilder<bool>(
-                  valueListenable: RoleService().showAiAssistant,
-                  builder: (context, show, child) {
-                    return _MenuTile(
-                      icon: Icons.psychology_outlined,
-                      iconColor: AppColors.brandDark,
-                      title: 'Hiển thị Trợ lý AI',
-                      subtitle: 'Hiện nút chat AI trôi nổi ngoài màn hình',
-                      trailing: Switch(
-                        value: show,
-                        activeColor: AppColors.brand,
-                        onChanged: (val) {
-                          RoleService().showAiAssistant.value = val;
-                        },
-                      ),
-                    );
-                  },
-                ),
+                // const Divider(height: 1, color: AppColors.border),
+                // ValueListenableBuilder<bool>(
+                //   valueListenable: RoleService().showAiAssistant,
+                //   builder: (context, show, child) {
+                //     return _MenuTile(
+                //       icon: Icons.psychology_outlined,
+                //       iconColor: AppColors.brandDark,
+                //       title: 'Hiển thị Trợ lý AI',
+                //       subtitle: 'Hiện nút chat AI trôi nổi ngoài màn hình',
+                //       trailing: Switch(
+                //         value: show,
+                //         activeColor: AppColors.brand,
+                //         onChanged: (val) {
+                //           RoleService().showAiAssistant.value = val;
+                //         },
+                //       ),
+                //     );
+                //   },
+                // ),
                 // Admin Control Panel
                 ValueListenableBuilder<AppRole>(
                   valueListenable: RoleService().currentRole,

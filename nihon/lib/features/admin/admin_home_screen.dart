@@ -119,20 +119,20 @@ class AdminHomeScreen extends StatelessWidget {
                       /*
                             'Trợ lý học từ vựng, ngữ pháp và lộ trình ôn tập',
                       */
-                      const SizedBox(height: 10),
-                      _ActiveSkillCard(
-                        jp: 'Key',
-                        vi: 'API Key',
-                        stat: 'Gemini',
-                        desc:
-                            'Cấu hình API key cho Nihon AI và chấm phát âm',
-                        color: AppColors.listening,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AdminAISettingsScreen(),
-                          ),
-                        ),
-                      ),
+                      // const SizedBox(height: 10),
+                      // _ActiveSkillCard(
+                      //   jp: 'Key',
+                      //   vi: 'API Key',
+                      //   stat: 'Gemini',
+                      //   desc:
+                      //       'Cấu hình API key cho Nihon AI và chấm phát âm',
+                      //   color: AppColors.listening,
+                      //   onTap: () => Navigator.of(context).push(
+                      //     MaterialPageRoute(
+                      //       builder: (_) => const AdminAISettingsScreen(),
+                      //     ),
+                      //   ),
+                      // ),
                       const SizedBox(height: 22),
                       Text('Sắp có', style: AppTextStyles.sectionLabel),
                       const SizedBox(height: 12),

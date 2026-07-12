@@ -37,9 +37,11 @@ class DataRepository {
     // 1. Populate with default data first (Instant load)
     _loadDefaultData();
 
-    // 2. Load from Firestore in the background (Non-blocking)
-    _syncWithFirestore().catchError((e) {
-      print("⚠️ Firestore sync failed, using local offline data: $e");
+    // 2. Listen to authentication state changes to sync with Firestore
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      _syncWithFirestore().catchError((e) {
+        print("⚠️ Firestore sync failed, using local offline data: $e");
+      });
     });
   }
 
@@ -54,118 +56,120 @@ class DataRepository {
 
     srsCards.clear();
     final now = DateTime.now();
-    // 20 default review cards
+    // 10 default Kanji review cards
     const sampleSrs = [
       SrsCard(
         word: '水',
         furigana: 'みず',
-        romaji: 'mizu',
+        romaji: 'THỦY',
         meaning: 'nước',
-        category: '名詞 — Noun',
+        category: 'Hán tự — Kanji',
         exampleJa: '水を一杯ください。',
         exampleVi: 'Cho tôi xin một cốc nước.',
       ),
       SrsCard(
-        word: '行く',
-        furigana: 'いく',
-        romaji: 'iku',
-        meaning: 'đi',
-        category: '動詞 — Verb',
-        exampleJa: '明日学校に行きます。',
-        exampleVi: 'Ngày mai tôi sẽ đi học.',
+        word: '人',
+        furigana: 'ひと',
+        romaji: 'NHÂN',
+        meaning: 'người',
+        category: 'Hán tự — Kanji',
+        exampleJa: 'あの人は誰ですか。',
+        exampleVi: 'Người kia là ai vậy?',
+      ),
+      SrsCard(
+        word: '山',
+        furigana: 'やま',
+        romaji: 'SƠN',
+        meaning: 'núi',
+        category: 'Hán tự — Kanji',
+        exampleJa: '富士山は高い山です。',
+        exampleVi: 'Núi Phú Sĩ là một ngọn núi cao.',
+      ),
+      SrsCard(
+        word: '川',
+        furigana: 'かわ',
+        romaji: 'XUYÊN',
+        meaning: 'sông',
+        category: 'Hán tự — Kanji',
+        exampleJa: '川で魚を釣ります。',
+        exampleVi: 'Tôi câu cá ở sông.',
+      ),
+      SrsCard(
+        word: '日',
+        furigana: 'ひ',
+        romaji: 'NHẬT',
+        meaning: 'ngày, mặt trời',
+        category: 'Hán tự — Kanji',
+        exampleJa: '今日はいい天気です。',
+        exampleVi: 'Hôm nay thời tiết đẹp.',
       ),
       SrsCard(
         word: '本',
         furigana: 'ほん',
-        romaji: 'hon',
-        meaning: 'sách',
-        category: '名詞 — Noun',
-        exampleJa: 'この本 is very interesting.',
-        exampleVi: 'Cuốn sách này rất thú vị.',
+        romaji: 'BẢN',
+        meaning: 'sách, nguồn gốc',
+        category: 'Hán tự — Kanji',
+        exampleJa: 'この本は面白いです。',
+        exampleVi: 'Cuốn sách này thú vị.',
       ),
       SrsCard(
-        word: '見る',
-        furigana: 'みる',
-        romaji: 'miru',
-        meaning: 'xem, nhìn',
-        category: '動詞 — Verb',
-        exampleJa: '映画を見るのが好きです。',
-        exampleVi: 'Tôi thích xem phim.',
+        word: '月',
+        furigana: 'つき',
+        romaji: 'NGUYỆT',
+        meaning: 'tháng, mặt trăng',
+        category: 'Hán tự — Kanji',
+        exampleJa: '月が綺麗ですね。',
+        exampleVi: 'Trăng đẹp quá nhỉ.',
       ),
       SrsCard(
-        word: '学生',
-        furigana: 'がくせい',
-        romaji: 'gakusei',
-        meaning: 'học sinh, sinh viên',
-        category: '名詞 — Noun',
-        exampleJa: '私は日本語の学生です。',
-        exampleVi: 'Tôi là học sinh tiếng Nhật.',
+        word: '木',
+        furigana: 'き',
+        romaji: 'MỘC',
+        meaning: 'cây',
+        category: 'Hán tự — Kanji',
+        exampleJa: '庭に大きな木があります。',
+        exampleVi: 'Trong vườn có một cái cây lớn.',
       ),
       SrsCard(
-        word: '日本',
-        furigana: 'にほん',
-        romaji: 'nihon',
-        meaning: 'Nhật Bản',
-        category: '名詞 — Noun',
-        exampleJa: 'いつか日本に行きたいです。',
-        exampleVi: 'Một lúc nào đó tôi muốn đi Nhật Bản.',
+        word: '火',
+        furigana: 'ひ',
+        romaji: 'HỎA',
+        meaning: 'lửa',
+        category: 'Hán tự — Kanji',
+        exampleJa: '火をつけないでください。',
+        exampleVi: 'Vui lòng không đốt lửa.',
       ),
       SrsCard(
-        word: '先生',
-        furigana: 'せんせい',
-        romaji: 'sensei',
-        meaning: 'thầy cô giáo',
-        category: '名詞 — Noun',
-        exampleJa: '日本語の先生に質問しました。',
-        exampleVi: 'Tôi đã hỏi thầy giáo tiếng Nhật.',
-      ),
-      SrsCard(
-        word: '食べる',
-        furigana: 'たべる',
-        romaji: 'taberu',
-        meaning: 'ăn, ăn uống',
-        category: '動詞 — Verb',
-        exampleJa: '毎日お寿司を食べます。',
-        exampleVi: 'Tôi ăn sushi mỗi ngày.',
-      ),
-      SrsCard(
-        word: '美味しい',
-        furigana: 'おいしい',
-        romaji: 'oishii',
-        meaning: 'ngon',
-        category: '形容詞 — Adjective',
-        exampleJa: 'このラーメンは美味しいです。',
-        exampleVi: 'Món ramen này ngon.',
-      ),
-      SrsCard(
-        word: '話す',
-        furigana: 'はなす',
-        romaji: 'hanasu',
-        meaning: 'nói chuyện',
-        category: '動詞 — Verb',
-        exampleJa: '友達と日本語で話します。',
-        exampleVi: 'Tôi nói chuyện bằng tiếng Nhật với bạn.',
+        word: '金',
+        furigana: 'かね',
+        romaji: 'KIM',
+        meaning: 'tiền, vàng',
+        category: 'Hán tự — Kanji',
+        exampleJa: 'お金がありません。',
+        exampleVi: 'Tôi không có tiền.',
       ),
     ];
 
     for (int i = 0; i < sampleSrs.length; i++) {
       final card = sampleSrs[i];
-      final isDue = i < 8;
-      String stage = '見習い';
-      if (i >= 11 && i < 14) stage = '弟子';
+      final isDue = i < 4;
+      String stage = '見習い I';
+      if (i >= 5 && i < 8) stage = '弟子 I';
 
       srsCards.add(CardProgress(
         card: card,
         srsStage: stage,
         nextReview: isDue 
             ? now.subtract(const Duration(minutes: 5)) 
-            : now.add(Duration(hours: (i - 7) * 4)),
+            : now.add(Duration(hours: (i - 3) * 4)),
       ));
     }
     srsCardsNotifier.value = List.from(srsCards);
   }
 
   Future<void> _syncWithFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+
     // 1. Sync Lessons
     final lessonsSnap = await _firestore.collection('lessons').get();
     if (lessonsSnap.docs.isEmpty) {
@@ -195,19 +199,31 @@ class DataRepository {
       grammarPointsNotifier.value = List.from(grammarPoints);
     }
 
-    // 3. Sync SRS Cards
-    final cardsSnap = await _firestore.collection('srs_cards').get();
-    if (cardsSnap.docs.isEmpty) {
-      // Initialize firestore with default data if empty
-      for (final c in srsCards) {
-        await _firestore.collection('srs_cards').add(_progressToMap(c));
+    // 3. Sync SRS Cards (User-specific if logged in)
+    if (user != null) {
+      final cardsSnap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('srs_cards')
+          .get();
+      if (cardsSnap.docs.isEmpty) {
+        // Initialize user's firestore cards with default data if empty
+        for (final c in srsCards) {
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('srs_cards')
+              .add(_progressToMap(c));
+        }
+      } else {
+        srsCards.clear();
+        for (final doc in cardsSnap.docs) {
+          srsCards.add(_progressFromMap(doc.data()));
+        }
+        srsCardsNotifier.value = List.from(srsCards);
       }
     } else {
-      srsCards.clear();
-      for (final doc in cardsSnap.docs) {
-        srsCards.add(_progressFromMap(doc.data()));
-      }
-      srsCardsNotifier.value = List.from(srsCards);
+      _loadDefaultData();
     }
 
     // 4. Auto-generate SRS cards from all lessons Kanji
@@ -255,9 +271,17 @@ class DataRepository {
           updated = true;
 
           // Lưu lên Firestore
-          _firestore.collection('srs_cards').add(_progressToMap(progress)).catchError((e) {
-            print("Error auto-adding SRS card: $e");
-          });
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('srs_cards')
+                .add(_progressToMap(progress))
+                .catchError((e) {
+              print("Error auto-adding SRS card: $e");
+            });
+          }
         }
       }
     }
@@ -278,12 +302,17 @@ class DataRepository {
 
   Future<void> _updateProgressInFirestore(CardProgress progress) async {
     try {
-      final snap = await _firestore
-          .collection('srs_cards')
-          .where('card.word', isEqualTo: progress.card.word)
-          .get();
-      if (snap.docs.isNotEmpty) {
-        await snap.docs.first.reference.update(_progressToMap(progress));
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final snap = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('srs_cards')
+            .where('card.word', isEqualTo: progress.card.word)
+            .get();
+        if (snap.docs.isNotEmpty) {
+          await snap.docs.first.reference.update(_progressToMap(progress));
+        }
       }
     } catch (e) {
       print("Error updating progress in firestore: $e");
@@ -397,13 +426,20 @@ class DataRepository {
   Future<void> addSrsCard(SrsCard card) async {
     final progress = CardProgress(
       card: card,
-      srsStage: '見習い',
+      srsStage: '見習い I',
       nextReview: DateTime.now(),
     );
     srsCards.add(progress);
     srsCardsNotifier.value = List.from(srsCards);
     try {
-      await _firestore.collection('srs_cards').add(_progressToMap(progress));
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('srs_cards')
+            .add(_progressToMap(progress));
+      }
     } catch (e) {
       print("Firestore error: $e");
     }
@@ -419,12 +455,17 @@ class DataRepository {
       srsCards[index] = updated;
       srsCardsNotifier.value = List.from(srsCards);
       try {
-        final snap = await _firestore
-            .collection('srs_cards')
-            .where('card.word', isEqualTo: oldWord)
-            .get();
-        if (snap.docs.isNotEmpty) {
-          await snap.docs.first.reference.set(_progressToMap(updated));
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final snap = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('srs_cards')
+              .where('card.word', isEqualTo: oldWord)
+              .get();
+          if (snap.docs.isNotEmpty) {
+            await snap.docs.first.reference.set(_progressToMap(updated));
+          }
         }
       } catch (e) {
         print("Firestore error: $e");
@@ -437,12 +478,17 @@ class DataRepository {
       srsCards.removeAt(index);
       srsCardsNotifier.value = List.from(srsCards);
       try {
-        final snap = await _firestore
-            .collection('srs_cards')
-            .where('card.word', isEqualTo: word)
-            .get();
-        if (snap.docs.isNotEmpty) {
-          await snap.docs.first.reference.delete();
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final snap = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('srs_cards')
+              .where('card.word', isEqualTo: word)
+              .get();
+          if (snap.docs.isNotEmpty) {
+            await snap.docs.first.reference.delete();
+          }
         }
       } catch (e) {
         print("Firestore error: $e");
