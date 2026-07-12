@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/services/data_repository.dart';
@@ -8,7 +10,6 @@ import '../../core/utils/app_config.dart';
 import '../crud/crud_management_screen.dart';
 import '../review/review_screen.dart';
 import '../welcome/welcome_screen.dart';
-import 'admin_ai_settings_screen.dart';
 import 'speaking/data/admin_repository.dart';
 import 'speaking/speaking_admin_screen.dart';
 
@@ -65,7 +66,7 @@ class AdminHomeScreen extends StatelessWidget {
                         jp: '話す',
                         vi: 'Luyện nói',
                         stat: '$totalSpeaking đề',
-                        desc: 'Soạn đề thi Nói (JPD316 · JPD113)',
+                        desc: 'Soạn đề thi Nói',
                         color: AppColors.speaking,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
@@ -83,18 +84,35 @@ class AdminHomeScreen extends StatelessWidget {
                         onTap: () => _openManager(context, 1),
                       ),
                       const SizedBox(height: 10),
-                      _ActiveSkillCard(
-                        jp: '語彙',
-                        vi: 'Từ vựng',
-                        stat: 'Firebase',
-                        desc: 'Quản lý giáo trình, bài học và từ vựng',
-                        color: AppColors.vocab,
-                        onTap: () {
-                          AppConfig.isAdmin.value = true;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const ReviewScreen(),
-                            ),
+                      // Badge hiển thị tổng số bài (đề) từ vựng đang có trong
+                      // Firestore settings/review_screen → lessons.
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instanceFor(
+                          app: Firebase.app(),
+                          databaseId: 'default',
+                        ).collection('settings').doc('review_screen').snapshots(),
+                        builder: (context, snapshot) {
+                          final lessons = snapshot.data?.data()?['lessons']
+                                  as Map<String, dynamic>? ??
+                              {};
+                          final vocabExamCount = lessons.values.fold<int>(
+                            0,
+                            (total, list) => total + (list as List).length,
+                          );
+                          return _ActiveSkillCard(
+                            jp: '語彙',
+                            vi: 'Từ vựng',
+                            stat: '$vocabExamCount đề',
+                            desc: 'Quản lý giáo trình, bài học và từ vựng',
+                            color: AppColors.vocab,
+                            onTap: () {
+                              AppConfig.isAdmin.value = true;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ReviewScreen(),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -116,23 +134,6 @@ class AdminHomeScreen extends StatelessWidget {
                         color: AppColors.brandDark,
                         onTap: () => _openManager(context, 0),
                       ),
-                      /*
-                            'Trợ lý học từ vựng, ngữ pháp và lộ trình ôn tập',
-                      */
-                      // const SizedBox(height: 10),
-                      // _ActiveSkillCard(
-                      //   jp: 'Key',
-                      //   vi: 'API Key',
-                      //   stat: 'Gemini',
-                      //   desc:
-                      //       'Cấu hình API key cho Nihon AI và chấm phát âm',
-                      //   color: AppColors.listening,
-                      //   onTap: () => Navigator.of(context).push(
-                      //     MaterialPageRoute(
-                      //       builder: (_) => const AdminAISettingsScreen(),
-                      //     ),
-                      //   ),
-                      // ),
                       const SizedBox(height: 22),
                       Text('Sắp có', style: AppTextStyles.sectionLabel),
                       const SizedBox(height: 12),
@@ -165,7 +166,6 @@ class AdminHomeScreen extends StatelessWidget {
   }
 
   static const List<(String, String, Color)> _comingSkills = [
-    ('読む', 'Đọc hiểu', AppColors.reading),
     ('聴く', 'Nghe', AppColors.listening),
   ];
 

@@ -10,11 +10,11 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
 import '../../data/models/srs_card.dart';
 import '../review/kanji_review_screen.dart';
+import '../lessons/grammar_lessons_screen.dart';
 import '../lessons/kanji_lessons_screen.dart';
 import '../listening/screens/listening_list_screen.dart';
 import '../speaking/level_select_screen.dart';
 import '../welcome/welcome_screen.dart';
-import 'widgets/daily_goal_card.dart';
 import 'widgets/resume_card.dart';
 import 'widgets/skill_card.dart';
 
@@ -44,6 +44,12 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
+    void openGrammar() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const GrammarLessonsScreen()),
+      );
+    }
+
     final repository = DataRepository();
 
     return ListView(
@@ -51,19 +57,6 @@ class DashboardScreen extends StatelessWidget {
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
-        ValueListenableBuilder<Map<String, int>>(
-          valueListenable: repository.xpHistoryNotifier,
-          builder: (context, history, child) {
-            final now = DateTime.now();
-            final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-            final todayXp = history[todayStr] ?? 0;
-            return DailyGoalCard(
-              current: todayXp,
-              target: repository.dailyGoal,
-            );
-          },
-        ),
-        const SizedBox(height: 12),
         ValueListenableBuilder<List<CardProgress>>(
           valueListenable: repository.srsCardsNotifier,
           builder: (context, srsList, child) {
@@ -111,6 +104,7 @@ class DashboardScreen extends StatelessWidget {
                 onTap: switch (skill.jpLabel) {
                   '語彙' => onStartVocabReview,
                   '漢字' => openKanji,
+                  '文法' => openGrammar,
                   '聴く' => openListening,
                   _ => null,
                 },

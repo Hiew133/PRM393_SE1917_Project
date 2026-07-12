@@ -28,8 +28,8 @@ const List<Skill> kSampleSkills = [
     color: AppColors.kanji,
   ),
   Skill(
-    jpLabel: '読む',
-    viLabel: 'Đọc hiểu',
+    jpLabel: '文法',
+    viLabel: 'Ngữ pháp',
     color: AppColors.reading,
   ),
   Skill(
