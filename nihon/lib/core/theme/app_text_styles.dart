@@ -1,5 +1,6 @@
+import 'dart:ui' show FontVariation;
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -17,9 +18,11 @@ class AppTextStyles {
     double? height,
     double letterSpacing = 0,
   }) {
-    return GoogleFonts.inter(
+    return TextStyle(
+      fontFamily: 'Inter',
       fontSize: size,
       fontWeight: weight,
+      fontVariations: [FontVariation('wght', weight.value.toDouble())],
       color: color,
       height: height ?? 1.3,
       letterSpacing: letterSpacing,
@@ -33,9 +36,11 @@ class AppTextStyles {
     double? height,
     double letterSpacing = 0,
   }) {
-    return GoogleFonts.notoSansJp(
+    return TextStyle(
+      fontFamily: 'NotoSansJP',
       fontSize: size,
       fontWeight: weight,
+      fontVariations: [FontVariation('wght', weight.value.toDouble())],
       color: color,
       height: height,
       letterSpacing: letterSpacing,

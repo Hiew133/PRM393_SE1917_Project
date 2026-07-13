@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -83,6 +84,106 @@ class _KanjiWritingCanvasState extends State<KanjiWritingCanvas> {
     return resampled;
   }
 
+  void _handleStart(Offset localPosition) {
+    if (widget.activeStrokeIndex >= widget.strokes.length) return;
+
+    final renderBox =
+        _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
+    final canvasSize = renderBox.size;
+
+    final templateStroke = widget.strokes[widget.activeStrokeIndex];
+
+    // Chuyển đổi điểm bắt đầu template sang toạ độ canvas thực tế
+    final templateStart = Offset(
+      templateStroke.startPoint.dx * canvasSize.width,
+      templateStroke.startPoint.dy * canvasSize.height,
+    );
+
+    // Kiểm tra nếu điểm chạm đầu tiên đủ gần điểm bắt đầu nét vẽ
+    final distance = (localPosition - templateStart).distance;
+    final tolerance = canvasSize.width * 0.18; // khoảng 54px trên canvas 300px
+
+    if (distance <= tolerance) {
+      setState(() {
+        _activeUserPath = [localPosition];
+        _isDrawingValid = true;
+      });
+    } else {
+      setState(() {
+        _activeUserPath = [];
+        _isDrawingValid = false;
+      });
+    }
+  }
+
+  void _handleUpdate(Offset localPosition) {
+    if (!_isDrawingValid) return;
+    setState(() {
+      _activeUserPath.add(localPosition);
+    });
+  }
+
+  void _handleEnd() {
+    if (!_isDrawingValid || _activeUserPath.isEmpty) return;
+
+    final renderBox =
+        _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
+    final canvasSize = renderBox.size;
+
+    final templateStroke = widget.strokes[widget.activeStrokeIndex];
+
+    // Chuyển đổi toàn bộ điểm của nét vẽ mẫu sang hệ toạ độ canvas thực tế
+    final templatePoints = templateStroke.points
+        .map((p) => Offset(p.dx * canvasSize.width, p.dy * canvasSize.height))
+        .toList();
+
+    bool isSuccess = false;
+
+    if (_activeUserPath.length >= 2 && templatePoints.length >= 2) {
+      // Kiểm tra khoảng cách điểm bắt đầu
+      final startDistance =
+          (_activeUserPath.first - templatePoints.first).distance;
+      final startTolerance =
+          canvasSize.width * 0.18; // khoảng 54px trên canvas 300px
+
+      if (startDistance <= startTolerance) {
+        // Resample cả nét vẽ người dùng và nét vẽ mẫu thành 16 điểm để so sánh hình dáng
+        final resampledUser = _resamplePath(_activeUserPath, 16);
+        final resampledTemplate = _resamplePath(templatePoints, 16);
+
+        // Tính khoảng cách trung bình giữa các cặp điểm tương ứng
+        double totalDistance = 0.0;
+        for (int i = 0; i < 16; i++) {
+          totalDistance += (resampledUser[i] - resampledTemplate[i]).distance;
+        }
+        final averageDistance = totalDistance / 16;
+
+        // Ngưỡng chấp nhận: 15% chiều rộng canvas (khoảng 45px trên canvas 300px)
+        final shapeThreshold = canvasSize.width * 0.15;
+
+        if (averageDistance <= shapeThreshold) {
+          isSuccess = true;
+        }
+      }
+    }
+
+    if (isSuccess) {
+      // Thành công: Gửi đường dẫn người dùng vẽ lên kèm index
+      widget.onStrokeCompleted(
+        widget.activeStrokeIndex,
+        List<Offset>.from(_activeUserPath),
+      );
+    }
+
+    // Reset nét vẽ hiện tại của ngón tay
+    setState(() {
+      _activeUserPath = [];
+      _isDrawingValid = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -102,114 +203,36 @@ class _KanjiWritingCanvasState extends State<KanjiWritingCanvas> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          child: GestureDetector(
+          // Listener (pointer thô) để lấy toạ độ vẽ; RawGestureDetector với
+          // EagerGestureRecognizer để canvas THẮNG gesture arena ngay khi đặt
+          // bút → SingleChildScrollView cha không cướp cử chỉ kéo DỌC, nhờ vậy
+          // vẽ được nét dọc/xuống.
+          child: Listener(
             key: _canvasKey,
             behavior: HitTestBehavior.opaque,
-            onPanStart: (details) {
-              if (widget.activeStrokeIndex >= widget.strokes.length) return;
-
-              final renderBox =
-                  _canvasKey.currentContext?.findRenderObject() as RenderBox?;
-              if (renderBox == null || !renderBox.hasSize) return;
-              final canvasSize = renderBox.size;
-
-              final localPosition = details.localPosition;
-              final templateStroke = widget.strokes[widget.activeStrokeIndex];
-
-              // Chuyển đổi điểm bắt đầu template sang toạ độ canvas thực tế
-              final templateStart = Offset(
-                templateStroke.startPoint.dx * canvasSize.width,
-                templateStroke.startPoint.dy * canvasSize.height,
-              );
-
-              // Kiểm tra nếu điểm chạm đầu tiên đủ gần điểm bắt đầu nét vẽ
-              final distance = (localPosition - templateStart).distance;
-              final tolerance = canvasSize.width * 0.18; // khoảng 54px trên canvas 300px
-
-              if (distance <= tolerance) {
-                setState(() {
-                  _activeUserPath = [localPosition];
-                  _isDrawingValid = true;
-                });
-              } else {
-                setState(() {
-                  _activeUserPath = [];
-                  _isDrawingValid = false;
-                });
-              }
-            },
-            onPanUpdate: (details) {
-              if (!_isDrawingValid) return;
-              setState(() {
-                _activeUserPath.add(details.localPosition);
-              });
-            },
-            onPanEnd: (details) {
-              if (!_isDrawingValid || _activeUserPath.isEmpty) return;
-
-              final renderBox =
-                  _canvasKey.currentContext?.findRenderObject() as RenderBox?;
-              if (renderBox == null || !renderBox.hasSize) return;
-              final canvasSize = renderBox.size;
-
-              final templateStroke = widget.strokes[widget.activeStrokeIndex];
-              
-              // Chuyển đổi toàn bộ điểm của nét vẽ mẫu sang hệ toạ độ canvas thực tế
-              final templatePoints = templateStroke.points
-                  .map((p) => Offset(p.dx * canvasSize.width, p.dy * canvasSize.height))
-                  .toList();
-
-              bool isSuccess = false;
-
-              if (_activeUserPath.length >= 2 && templatePoints.length >= 2) {
-                // Kiểm tra khoảng cách điểm bắt đầu
-                final startDistance = (_activeUserPath.first - templatePoints.first).distance;
-                final startTolerance = canvasSize.width * 0.18; // khoảng 54px trên canvas 300px
-
-                if (startDistance <= startTolerance) {
-                  // Resample cả nét vẽ người dùng và nét vẽ mẫu thành 16 điểm để so sánh hình dáng
-                  final resampledUser = _resamplePath(_activeUserPath, 16);
-                  final resampledTemplate = _resamplePath(templatePoints, 16);
-
-                  // Tính khoảng cách trung bình giữa các cặp điểm tương ứng
-                  double totalDistance = 0.0;
-                  for (int i = 0; i < 16; i++) {
-                    totalDistance += (resampledUser[i] - resampledTemplate[i]).distance;
-                  }
-                  final averageDistance = totalDistance / 16;
-
-                  // Ngưỡng chấp nhận: 15% chiều rộng canvas (khoảng 45px trên canvas 300px)
-                  final shapeThreshold = canvasSize.width * 0.15;
-
-                  if (averageDistance <= shapeThreshold) {
-                    isSuccess = true;
-                  }
-                }
-              }
-
-              if (isSuccess) {
-                // Thành công: Gửi đường dẫn người dùng vẽ lên kèm index
-                widget.onStrokeCompleted(
-                  widget.activeStrokeIndex,
-                  List<Offset>.from(_activeUserPath),
-                );
-              }
-
-              // Reset nét vẽ hiện tại của ngón tay
-              setState(() {
-                _activeUserPath = [];
-                _isDrawingValid = false;
-              });
-            },
-            child: SizedBox.expand(
-              child: CustomPaint(
-                painter: _KanjiPainter(
-                  character: widget.character,
-                  strokes: widget.strokes,
-                  activeStrokeIndex: widget.activeStrokeIndex,
-                  completedUserPaths: widget.completedUserPaths,
-                  activeUserPath: _activeUserPath,
-                  isAnimating: widget.isAnimating,
+            onPointerDown: (event) => _handleStart(event.localPosition),
+            onPointerMove: (event) => _handleUpdate(event.localPosition),
+            onPointerUp: (event) => _handleEnd(),
+            onPointerCancel: (event) => _handleEnd(),
+            child: RawGestureDetector(
+              behavior: HitTestBehavior.opaque,
+              gestures: <Type, GestureRecognizerFactory>{
+                EagerGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                  (EagerGestureRecognizer instance) {},
+                ),
+              },
+              child: SizedBox.expand(
+                child: CustomPaint(
+                  painter: _KanjiPainter(
+                    character: widget.character,
+                    strokes: widget.strokes,
+                    activeStrokeIndex: widget.activeStrokeIndex,
+                    completedUserPaths: widget.completedUserPaths,
+                    activeUserPath: _activeUserPath,
+                    isAnimating: widget.isAnimating,
+                  ),
                 ),
               ),
             ),

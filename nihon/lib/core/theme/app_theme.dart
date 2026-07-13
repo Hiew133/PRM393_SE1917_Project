@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -21,7 +20,8 @@ class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).apply(
+      textTheme: base.textTheme.apply(
+        fontFamily: 'DMSans',
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
       ),
@@ -41,7 +41,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.dmSans(
+          textStyle: const TextStyle(
+            fontFamily: 'DMSans',
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),

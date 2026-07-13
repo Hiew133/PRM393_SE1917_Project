@@ -35,8 +35,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  # Google Fonts – Noto Sans JP (tiếng Nhật) + DM Sans (latin)
-  google_fonts: ^6.2.1
+  # Fonts (Inter, Noto Sans JP, DM Sans, Lexend) được BUNDLE trong assets/fonts/
+  # thay vì tải runtime qua google_fonts → mở app không phải fetch font qua mạng.
 
   # Luyện nói: nhận diện giọng nói (STT) + phát âm (TTS)
   speech_to_text: ^7.0.0
@@ -86,6 +86,21 @@ flutter:
 
   assets:
     - assets/audio/
+
+  # Font bundle (variable fonts – 1 file/họ, tự map theo fontWeight/fontVariations).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP.ttf
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans.ttf
+    - family: Lexend
+      fonts:
+        - asset: assets/fonts/Lexend.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

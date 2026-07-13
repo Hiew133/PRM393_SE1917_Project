@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -179,7 +178,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Sửa Tiêu Đề Bài Học',
-          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: controller,
@@ -272,7 +271,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Thêm Giáo Trình Mới',
-          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -378,7 +377,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Thêm Bài Học Mới',
-          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -481,7 +480,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Sửa Giáo Trình',
-          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -670,7 +669,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Sửa Tiêu Đề',
-          style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: controller,
@@ -738,7 +737,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ),
           title: Text(
             isNew ? 'Thêm Từ Vựng Mới' : 'Sửa Từ Vựng',
-            style: GoogleFonts.lexend(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Lexend',fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -950,7 +949,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               child: Text(
                                 currentTitle,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.lexend(
+                                style: TextStyle(fontFamily: 'Lexend',
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -1303,7 +1302,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                   _screenTitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.lexend(
+                                  style: TextStyle(fontFamily: 'Lexend',
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.textPrimary,

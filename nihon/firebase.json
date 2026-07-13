@@ -1,1 +1,68 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"prm393-project-857e1","appId":"1:987009493612:android:2fe88130d0d5a1e314c649","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"prm393-project-857e1","configurations":{"android":"1:987009493612:android:2fe88130d0d5a1e314c649","web":"1:987009493612:web:d3b7f0db54da685214c649"}}}}}}
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/canvaskit/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "**/*.@(ttf|otf|woff|woff2|wasm)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "/@(index.html|main.dart.js|flutter_bootstrap.js|flutter_service_worker.js|version.json|manifest.json|favicon.png)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/assets/@(AssetManifest*|FontManifest*|NOTICES*)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/icons/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+        ]
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "prm393-project-857e1",
+          "appId": "1:987009493612:android:2fe88130d0d5a1e314c649",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "prm393-project-857e1",
+          "configurations": {
+            "android": "1:987009493612:android:2fe88130d0d5a1e314c649",
+            "web": "1:987009493612:web:d3b7f0db54da685214c649"
+          }
+        }
+      }
+    }
+  }
+}
