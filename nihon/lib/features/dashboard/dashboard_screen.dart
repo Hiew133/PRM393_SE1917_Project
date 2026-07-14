@@ -10,6 +10,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/guest_lock_dialog.dart';
 import '../../data/models/skill.dart';
 import '../games/football_quiz/football_quiz_screen.dart';
+import '../kana_quiz/kana_quiz_screen.dart';
 import '../lessons/grammar_lessons_screen.dart';
 import '../lessons/kanji_lessons_screen.dart';
 import '../listening/screens/listening_list_screen.dart';
@@ -70,6 +71,14 @@ class DashboardScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
                 );
               },
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _KanaBanner(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const KanaQuizScreen()),
             );
           },
         ),
@@ -267,6 +276,97 @@ class _GameBanner extends StatelessWidget {
                     const SizedBox(width: 6),
                     const Text('→', style: TextStyle(color: Colors.white)),
                   ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Thẻ mở "Ôn bảng chữ cái Kana" (Hiragana + Katakana).
+class _KanaBanner extends StatelessWidget {
+  const _KanaBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7C3AED), Color(0xFF9B4FCC)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.kanji.withValues(alpha: 0.28),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text('あ',
+                  style: AppTextStyles.jp(size: 26, weight: FontWeight.w700, color: Colors.white)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'BẢNG CHỮ CÁI',
+                    style: AppTextStyles.latin(
+                      size: 10,
+                      weight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Ôn Hiragana & Katakana',
+                    style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Chọn hàng rồi gõ romaji — luyện đến khi thuộc',
+                    style: AppTextStyles.latin(size: 12, color: Colors.white.withValues(alpha: 0.85)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Ôn',
+                      style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: Colors.white)),
+                  const SizedBox(width: 6),
+                  const Text('→', style: TextStyle(color: Colors.white)),
                 ],
               ),
             ),
