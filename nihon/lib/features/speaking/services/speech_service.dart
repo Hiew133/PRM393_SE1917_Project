@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/utils/web_tts_engine.dart';
+
 /// Bọc thu âm giọng nói (STT) và đọc câu tiếng Nhật (TTS).
 ///
 /// Cần quyền micro:
@@ -40,31 +42,33 @@ class SpeechService {
         }
       },
     );
-    await _tts.setLanguage('ja-JP');
-    await _tts.setSpeechRate(0.45); // chậm để dễ nghe
-    // Máy ảo Android thường THIẾU dữ liệu giọng tiếng Nhật → TTS im lặng mà
-    // không báo gì. Kiểm tra để controller còn hiện cảnh báo cho người dùng.
-    // (Web bỏ qua: trình duyệt tự lo voice, API check trên web không đáng tin.)
+    // WEB: KHÔNG dùng flutter_tts — bản web của plugin hay kẹt state sau
+    // cancel() và không gắn được voice ja-JP khi voice nạp muộn (lỗi "lúc
+    // nghe được lúc không"). Đi thẳng Web Speech API qua WebTtsEngine.
     if (!kIsWeb) {
+      await _tts.setLanguage('ja-JP');
+      await _tts.setSpeechRate(0.45); // chậm để dễ nghe
+      // Máy ảo Android thường THIẾU dữ liệu giọng tiếng Nhật → TTS im lặng mà
+      // không báo gì. Kiểm tra để controller còn hiện cảnh báo cho người dùng.
       try {
         final avail = await _tts.isLanguageAvailable('ja-JP');
         _jaVoiceOk = avail == true;
       } catch (_) {
         _jaVoiceOk = true; // không kiểm tra được thì đừng báo oan
       }
-    }
-    _tts.setStartHandler(() {
-      _ttsSpeaking = true;
-      onSpeakingChanged?.call(true);
-    });
-    void ttsDone() {
-      _ttsSpeaking = false;
-      onSpeakingChanged?.call(false);
-    }
+      _tts.setStartHandler(() {
+        _ttsSpeaking = true;
+        onSpeakingChanged?.call(true);
+      });
+      void ttsDone() {
+        _ttsSpeaking = false;
+        onSpeakingChanged?.call(false);
+      }
 
-    _tts.setCompletionHandler(ttsDone);
-    _tts.setCancelHandler(ttsDone);
-    _tts.setErrorHandler((_) => ttsDone());
+      _tts.setCompletionHandler(ttsDone);
+      _tts.setCancelHandler(ttsDone);
+      _tts.setErrorHandler((_) => ttsDone());
+    }
     return _sttReady;
   }
 
@@ -134,6 +138,15 @@ class SpeechService {
   /// CHỈ cancel khi thật sự đang đọc — Chrome web dễ "kẹt" engine nếu cancel
   /// lúc rảnh rồi speak ngay sau đó (mất tiếng).
   Future<void> stopSpeaking() async {
+    if (kIsWeb) {
+      // Engine web tự xử lý mọi trạng thái kẹt — cancel luôn an toàn.
+      WebTtsEngine.instance.stop();
+      if (_ttsSpeaking) {
+        _ttsSpeaking = false;
+        onSpeakingChanged?.call(false);
+      }
+      return;
+    }
     if (!_ttsSpeaking) return;
     await _tts.stop();
     _ttsSpeaking = false;
@@ -149,6 +162,20 @@ class SpeechService {
   /// Sau stop chờ 150ms vì Chrome nuốt utterance mới nếu speak() sát sau cancel.
   Future<void> speak(String japanese) async {
     if (japanese.isEmpty) return;
+    if (kIsWeb) {
+      await WebTtsEngine.instance.speak(
+        japanese,
+        onStart: () {
+          _ttsSpeaking = true;
+          onSpeakingChanged?.call(true);
+        },
+        onEnd: () {
+          _ttsSpeaking = false;
+          onSpeakingChanged?.call(false);
+        },
+      );
+      return;
+    }
     await _tts.stop();
     _ttsSpeaking = false;
     await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -157,6 +184,10 @@ class SpeechService {
 
   void dispose() {
     _stt.cancel();
-    _tts.stop();
+    if (kIsWeb) {
+      WebTtsEngine.instance.stop();
+    } else {
+      _tts.stop();
+    }
   }
 }
