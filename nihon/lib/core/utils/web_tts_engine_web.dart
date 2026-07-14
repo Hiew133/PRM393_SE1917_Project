@@ -17,7 +17,9 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:typed_data';
 
 @JS('speechSynthesis')
 external _SpeechSynthesis? get _synthOrNull;
@@ -50,6 +52,15 @@ extension type _Voice._(JSObject _) implements JSObject {
   external bool get localService;
 }
 
+extension type _Audio._(JSObject _) implements JSObject {
+  external factory _Audio();
+  external set src(String value);
+  external JSPromise<JSAny?> play();
+  external void pause();
+  external set onended(JSFunction? handler);
+  external set onerror(JSFunction? handler);
+}
+
 class WebTtsEngine {
   WebTtsEngine._() {
     final synth = _synthOrNull;
@@ -78,6 +89,66 @@ class WebTtsEngine {
   Timer? _watchdog;
   Timer? _keepAlive;
   Timer? _failsafe;
+
+  /// Audio element đang phát WAV từ Gemini TTS (fallback khi không có voice).
+  _Audio? _audio;
+
+  /// Chờ trình duyệt nạp voice tiếng Nhật (Chrome nạp bất đồng bộ). Trả về
+  /// `false` nếu hết [timeout] mà vẫn không có — caller chuyển sang fallback
+  /// Gemini TTS thay vì đọc bằng voice mặc định (voice Anh gặp chữ Nhật thì
+  /// im lặng dù sự kiện vẫn bắn đủ).
+  Future<bool> ensureJapaneseVoice({
+    Duration timeout = const Duration(milliseconds: 1500),
+  }) async {
+    if (_synthOrNull == null) return false;
+    _jaVoice ??= _pickJaVoice();
+    final tries = timeout.inMilliseconds ~/ 100;
+    for (var i = 0; i < tries && _jaVoice == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      _jaVoice = _pickJaVoice();
+    }
+    return _jaVoice != null;
+  }
+
+  /// Phát một file WAV (audio Gemini TTS). Ngắt mọi âm thanh đang chạy trước.
+  Future<void> playWav(
+    Uint8List wav, {
+    void Function()? onStart,
+    void Function()? onEnd,
+  }) async {
+    final generation = ++_generation;
+    _clearTimers();
+    _synthOrNull?.cancel();
+    _audio?.pause();
+
+    var finished = false;
+    void finish() {
+      if (finished || generation != _generation) return;
+      finished = true;
+      _clearTimers();
+      _audio = null;
+      onEnd?.call();
+    }
+
+    final audio = _Audio()
+      ..src = 'data:audio/wav;base64,${base64Encode(wav)}';
+    audio.onended = ((JSAny _) => finish()).toJS;
+    audio.onerror = ((JSAny _) => finish()).toJS;
+    _audio = audio;
+
+    onStart?.call();
+    try {
+      await audio.play().toDart;
+    } catch (_) {
+      finish(); // autoplay bị chặn / dữ liệu hỏng — trả trạng thái xong ngay
+      return;
+    }
+    // Failsafe khi onended thất lạc: WAV 24kHz mono 16-bit ≈ 48 byte/ms.
+    _failsafe = Timer(
+      Duration(milliseconds: 4000 + wav.length ~/ 48),
+      finish,
+    );
+  }
 
   /// Đọc [text] bằng giọng tiếng Nhật. [onStart]/[onEnd] bắn theo audio thật
   /// (dùng cho lip-sync). Gọi lại khi đang đọc sẽ ngắt câu cũ.
@@ -160,11 +231,13 @@ class WebTtsEngine {
     );
   }
 
-  /// Ngắt mọi âm thanh đang đọc/đang chờ.
+  /// Ngắt mọi âm thanh đang đọc/đang chờ (cả voice trình duyệt lẫn WAV).
   void stop() {
     _generation++;
     _clearTimers();
     _current = null;
+    _audio?.pause();
+    _audio = null;
     final synth = _synthOrNull;
     if (synth == null) return;
     synth.cancel();

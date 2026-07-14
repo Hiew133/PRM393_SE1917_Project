@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/services/gemini_tts_service.dart';
 import '../../../core/utils/web_tts_engine.dart';
 
 /// Bọc thu âm giọng nói (STT) và đọc câu tiếng Nhật (TTS).
@@ -17,6 +18,10 @@ class SpeechService {
   bool _sttReady = false;
   bool _ttsSpeaking = false;
   bool _jaVoiceOk = true; // thiết bị có giọng đọc tiếng Nhật không
+
+  /// Tăng mỗi lần speak/stop trên web — hủy kết quả Gemini TTS về muộn
+  /// (người dùng đã bấm mic ngắt lời trong lúc chờ server tổng hợp audio).
+  int _webSpeakSeq = 0;
 
   /// Báo trạng thái TTS (true = đang đọc). Nhân vật ảo dùng để lip-sync:
   /// miệng chỉ cử động trong lúc audio đang phát.
@@ -144,6 +149,7 @@ class SpeechService {
   Future<void> stopSpeaking() async {
     if (kIsWeb) {
       // Engine web tự xử lý mọi trạng thái kẹt — cancel luôn an toàn.
+      _webSpeakSeq++;
       WebTtsEngine.instance.stop();
       if (_ttsSpeaking) {
         _ttsSpeaking = false;
@@ -167,17 +173,30 @@ class SpeechService {
   Future<void> speak(String japanese) async {
     if (japanese.isEmpty) return;
     if (kIsWeb) {
-      await WebTtsEngine.instance.speak(
-        japanese,
-        onStart: () {
-          _ttsSpeaking = true;
-          onSpeakingChanged?.call(true);
-        },
-        onEnd: () {
-          _ttsSpeaking = false;
-          onSpeakingChanged?.call(false);
-        },
-      );
+      final seq = ++_webSpeakSeq;
+      void started() {
+        _ttsSpeaking = true;
+        onSpeakingChanged?.call(true);
+      }
+
+      void ended() {
+        _ttsSpeaking = false;
+        onSpeakingChanged?.call(false);
+      }
+
+      final engine = WebTtsEngine.instance;
+      if (await engine.ensureJapaneseVoice()) {
+        if (seq != _webSpeakSeq) return;
+        await engine.speak(japanese, onStart: started, onEnd: ended);
+        return;
+      }
+      // Trình duyệt không có voice ja-JP (đọc bằng voice mặc định sẽ im
+      // lặng) → tổng hợp audio bằng Gemini TTS rồi phát WAV.
+      final wav = await GeminiTtsService.instance.synthesizeWav(japanese);
+      if (seq != _webSpeakSeq) return; // người dùng đã ngắt trong lúc chờ
+      if (wav != null) {
+        await engine.playWav(wav, onStart: started, onEnd: ended);
+      }
       return;
     }
     await _tts.stop();
