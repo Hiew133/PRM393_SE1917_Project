@@ -352,12 +352,16 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Khán đài làm nền (lộ ra ở phần trời phía trên sân).
+              Positioned.fill(
+                child: Image.asset(_asStadium, fit: BoxFit.cover),
+              ),
               // Nền sân cỏ phủ kín vùng chơi (khung thành ở phía trên).
               Positioned.fill(
                 child: Image.asset(
                   _asField,
                   fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
+                  alignment: Alignment.bottomCenter,
                 ),
               ),
               // Thủ môn (đứng trước khung thành).
