@@ -342,7 +342,7 @@ class _KanaBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Ôn Hiragana & Katakana',
+                    'Học Hiragana & Katakana',
                     style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white),
                   ),
                   const SizedBox(height: 2),
@@ -363,7 +363,7 @@ class _KanaBanner extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Ôn',
+                  Text('Học',
                       style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(width: 6),
                   const Text('→', style: TextStyle(color: Colors.white)),

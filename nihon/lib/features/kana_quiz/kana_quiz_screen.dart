@@ -184,7 +184,7 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
                 icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
-              Text('Ôn bảng chữ cái Kana',
+              Text('Học bảng chữ cái Kana',
                   style: AppTextStyles.latin(size: 19, weight: FontWeight.w800, color: AppColors.textPrimary)),
             ],
           ),
@@ -205,7 +205,7 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Chọn hàng để ôn',
+              Text('Chọn hàng để học',
                   style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: AppColors.textMuted)),
               TextButton(
                 onPressed: _toggleSelectAll,
@@ -293,26 +293,29 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
   Widget _startBar() {
     final count = _totalSelectedKana;
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Text(
-              count == 0 ? 'Chưa chọn hàng nào' : 'Đã chọn $count chữ',
-              style: AppTextStyles.latin(size: 14, weight: FontWeight.w700, color: AppColors.textSecondary),
-            ),
+          Text(
+            count == 0 ? 'Chưa chọn hàng nào' : 'Đã chọn $count chữ',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.latin(size: 14, weight: FontWeight.w700, color: AppColors.textSecondary),
           ),
+          const SizedBox(height: 8),
           ElevatedButton(
             onPressed: count == 0 ? null : _startQuiz,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
               disabledBackgroundColor: AppColors.border,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: Text('Bắt đầu', style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white)),
@@ -455,7 +458,7 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
           const SizedBox(height: 12),
           Text('Hoàn thành!', style: AppTextStyles.latin(size: 24, weight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text('Bạn đã ôn xong $_poolSize chữ kana.',
+          Text('Bạn đã học xong $_poolSize chữ kana.',
               textAlign: TextAlign.center,
               style: AppTextStyles.latin(size: 14, color: AppColors.textMuted)),
           const SizedBox(height: 24),
@@ -486,7 +489,7 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text('Ôn lại', style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white)),
+              child: Text('Học lại', style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 12),
