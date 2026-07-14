@@ -7,6 +7,7 @@ import '../../core/services/data_repository.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/guest_lock_dialog.dart';
 import '../../data/models/skill.dart';
 import '../games/football_quiz/football_quiz_screen.dart';
 import '../lessons/grammar_lessons_screen.dart';
@@ -53,10 +54,22 @@ class DashboardScreen extends StatelessWidget {
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
-        _GameBanner(
-          onPlay: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
+        ValueListenableBuilder<AppRole>(
+          valueListenable: RoleService().currentRole,
+          builder: (context, role, _) {
+            final isGuest = role == AppRole.guest;
+            return _GameBanner(
+              locked: isGuest,
+              onPlay: () {
+                // Khách chỉ được xem — muốn chơi phải đăng nhập.
+                if (isGuest) {
+                  showGuestLockDialog(context);
+                  return;
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
+                );
+              },
             );
           },
         ),
@@ -164,9 +177,12 @@ const List<List<Color>> kAvatarGradients = [
 
 /// Banner mở trò chơi "Thủ môn bắt bóng" (thay cho thẻ Tiếp tục học).
 class _GameBanner extends StatelessWidget {
-  const _GameBanner({required this.onPlay});
+  const _GameBanner({required this.onPlay, this.locked = false});
 
   final VoidCallback onPlay;
+
+  /// Chế độ Khách: hiển thị ổ khóa, bấm vào mời đăng nhập.
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -241,12 +257,16 @@ class _GameBanner extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Chơi',
-                    style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: Colors.white),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text('→', style: TextStyle(color: Colors.white)),
+                  if (locked)
+                    const Icon(Icons.lock_outline, size: 15, color: Colors.white)
+                  else ...[
+                    Text(
+                      'Chơi',
+                      style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: Colors.white),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('→', style: TextStyle(color: Colors.white)),
+                  ],
                 ],
               ),
             ),
