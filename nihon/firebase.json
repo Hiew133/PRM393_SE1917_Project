@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "sakura-nihon",
     "public": "build/web",
     "ignore": [
       "firebase.json",
