@@ -36,6 +36,10 @@ extension type _SpeechSynthesis._(JSObject _) implements JSObject {
   external set onvoiceschanged(JSFunction? handler);
 }
 
+// Bắt buộc có @JS('…') để map đúng constructor JS toàn cục — thiếu nó,
+// dart:js_interop sẽ gọi `new _Utterance()` (không tồn tại) → TypeError
+// ngay lần đọc đầu tiên.
+@JS('SpeechSynthesisUtterance')
 extension type _Utterance._(JSObject _) implements JSObject {
   external factory _Utterance(String text);
   external set lang(String value);
@@ -52,6 +56,7 @@ extension type _Voice._(JSObject _) implements JSObject {
   external bool get localService;
 }
 
+@JS('Audio')
 extension type _Audio._(JSObject _) implements JSObject {
   external factory _Audio();
   external set src(String value);
