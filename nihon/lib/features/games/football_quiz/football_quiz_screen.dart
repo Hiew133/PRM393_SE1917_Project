@@ -34,6 +34,7 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
   static const _asField = 'assets/images/football/field.png';
   static const _asKeeperIdle = 'assets/images/football/keeper_idle.png';
   static const _asKeeperDive = 'assets/images/football/keeper_dive.png';
+  static const _asKeeperMiss = 'assets/images/football/keeper_miss.png';
 
   final Random _rng = Random();
 
@@ -387,13 +388,13 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
         Alignment pos;
         Widget keeper;
         if (_answered && _lastCorrect) {
-          // Đúng: thủ môn bay NHẦM hướng (sang trái), để lộ khung thành.
+          // Đúng: thủ môn LAO RA CHỤP HỤT — bóng bay qua tay vào lưới.
           pos = Alignment.lerp(
-            const Alignment(0, -0.32),
-            const Alignment(-0.55, -0.12),
+            const Alignment(0, -0.30),
+            const Alignment(0.05, -0.10),
             t,
           )!;
-          keeper = _diveKeeper(keeperH);
+          keeper = Image.asset(_asKeeperMiss, height: keeperH);
         } else if (_answered && !_lastCorrect) {
           // Sai: thủ môn bay ra bắt dính bóng ở giữa.
           pos = const Alignment(0, -0.24);
