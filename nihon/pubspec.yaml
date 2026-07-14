@@ -86,6 +86,7 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/images/football/
 
   # Font bundle (variable fonts – 1 file/họ, tự map theo fontWeight/fontVariations).
   fonts:
