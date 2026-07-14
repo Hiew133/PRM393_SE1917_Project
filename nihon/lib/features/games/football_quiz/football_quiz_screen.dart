@@ -39,7 +39,6 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
   final Random _rng = Random();
 
   _Phase _phase = _Phase.setup;
-  int _jersey = 10;
   int _count = 5;
 
   late List<_RoundQuestion> _round;
@@ -154,19 +153,7 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
                   style: AppTextStyles.latin(size: 14, color: Colors.white70)),
               const SizedBox(height: 24),
               _panel(
-                title: 'Chọn áo số của bạn',
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    for (int n = 1; n <= 10; n++) _jerseyChip(n),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _panel(
-                title: 'Số câu hỏi',
+                title: 'Chọn số câu hỏi',
                 child: Row(
                   children: [
                     for (final c in [5, 7, 10]) ...[
@@ -209,32 +196,6 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
           const SizedBox(height: 12),
           child,
         ],
-      ),
-    );
-  }
-
-  Widget _jerseyChip(int n) {
-    final selected = _jersey == n;
-    return GestureDetector(
-      onTap: () => setState(() => _jersey = n),
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.brand : AppColors.surfaceAlt,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? AppColors.brandDark : AppColors.border,
-            width: 2,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Text('$n',
-            style: AppTextStyles.latin(
-              size: 20,
-              weight: FontWeight.w900,
-              color: selected ? Colors.white : AppColors.textSecondary,
-            )),
       ),
     );
   }
@@ -311,15 +272,6 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
           const SizedBox(width: 8),
           _hudChip('$_goals bàn', Icons.emoji_events, color: AppColors.brand),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.brand,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text('Áo số $_jersey',
-                style: AppTextStyles.latin(size: 12, weight: FontWeight.w800, color: Colors.white)),
-          ),
         ],
       ),
     );
