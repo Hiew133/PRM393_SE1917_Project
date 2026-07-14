@@ -84,8 +84,16 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
   }
 
   void _startGame() {
-    final pool = List<FootballQuestion>.from(kFootballQuestions)..shuffle(_rng);
-    final picked = pool.take(_count).map((q) {
+    // Chọn 5 câu → dùng đúng bộ 5 câu cố định; 7/10 → bốc ngẫu nhiên bộ chính.
+    final List<FootballQuestion> source;
+    if (_count == 5) {
+      source = kFootballFiveSet;
+    } else {
+      source = (List<FootballQuestion>.from(kFootballQuestions)..shuffle(_rng))
+          .take(_count)
+          .toList();
+    }
+    final picked = source.map((q) {
       // Trộn thứ tự đáp án, giữ dấu đáp án đúng theo giá trị.
       final opts = List<String>.from(q.options)..shuffle(_rng);
       return _RoundQuestion(q, opts, opts.indexOf(q.correctAnswer));

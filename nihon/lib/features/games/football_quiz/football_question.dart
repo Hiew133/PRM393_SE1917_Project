@@ -140,3 +140,42 @@ const List<FootballQuestion> kFootballQuestions = [
     explain: 'は khi làm trợ từ đọc là "wa": Konnichiwa.',
   ),
 ];
+
+/// Bộ 5 câu CỐ ĐỊNH dùng khi người chơi chọn "5 câu" (đúng thứ tự này).
+const List<FootballQuestion> kFootballFiveSet = [
+  FootballQuestion(
+    sentence: '"Dừng lại đi"',
+    hintVi: 'Trong tiếng Nhật là gì?',
+    options: ['Yamada', 'Yare yare', 'Yamete', 'Yayature'],
+    correctIndex: 2,
+    explain: 'やめて (yamete) = "dừng lại đi / đừng mà".',
+  ),
+  FootballQuestion(
+    sentence: 'どき　どき',
+    hintVi: 'Từ này đọc là gì?',
+    options: ['Toki toki', 'Hori hori', 'Fori fori', 'Doki doki'],
+    correctIndex: 3,
+    explain: 'どきどき = doki doki (tim đập thình thịch).',
+  ),
+  FootballQuestion(
+    sentence: '"Cảm giác"',
+    hintVi: 'Trong tiếng Nhật là gì?',
+    options: ['Kimono', 'Kimochi', 'Kimricha', 'Kimchi'],
+    correctIndex: 1,
+    explain: '気持ち (kimochi) = cảm giác, cảm xúc.',
+  ),
+  FootballQuestion(
+    sentence: '"Hoa anh đào"',
+    hintVi: 'Tiếng Nhật là gì?',
+    options: ['Sakutara', 'Sasuke', 'Sahara', 'Sakura'],
+    correctIndex: 3,
+    explain: '桜 (sakura) = hoa anh đào.',
+  ),
+  FootballQuestion(
+    sentence: 'Gọi "Anh Chaien"',
+    hintVi: 'Trong tiếng Nhật gọi thế nào cho thân mật?',
+    options: ['Chaien', 'Chaien uni', 'Chaien opso', 'Chaien chan'],
+    correctIndex: 3,
+    explain: 'Thêm hậu tố ちゃん (chan) — cách gọi thân mật của tiếng Nhật (uni/opso là tiếng Hàn).',
+  ),
+];
