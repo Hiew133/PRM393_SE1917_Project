@@ -50,7 +50,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   ChatSession? _chat;
 
   static const String _systemInstruction =
-      'Bạn là một trợ lý học tiếng Nhật thông minh, vui vẻ và thân thiện tên là Nihon. '
+      'Bạn là một trợ lý học tiếng Nhật thông minh, vui vẻ và thân thiện tên là Sakura. '
       'Hãy trả lời câu hỏi của học sinh bằng Tiếng Việt ngắn gọn, dễ hiểu, '
       'sử dụng các ký tự Markdown để in đậm, tạo danh sách rõ ràng, kèm icon sinh động.';
 
@@ -77,7 +77,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     super.initState();
     _messages.add(
       ChatMessage(
-        text: 'Xin chào! Tôi là Trợ lý Học tập Nihon của bạn. Bạn muốn tôi giải thích ngữ pháp, từ vựng hay luyện giao tiếp tiếng Nhật hôm nay?',
+        text: 'Xin chào! Tôi là Trợ lý Học tập Sakura của bạn. Bạn muốn tôi giải thích ngữ pháp, từ vựng hay luyện giao tiếp tiếng Nhật hôm nay?',
         isUser: false,
         timestamp: DateTime.now(),
       ),
@@ -182,7 +182,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Trợ lý học tập Nihon',
+                    'Trợ lý học tập Sakura',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.latin(size: 16, weight: FontWeight.bold, color: AppColors.textPrimary),
@@ -257,7 +257,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Nihon đang tìm câu trả lời...',
+                    'Sakura đang tìm câu trả lời...',
                     style: AppTextStyles.latin(size: 12, color: AppColors.textMuted, weight: FontWeight.w500),
                   ),
                 ],
