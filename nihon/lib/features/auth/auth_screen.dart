@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/services/google_auth_service.dart';
+import '../../core/services/login_attempt_service.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -73,6 +74,15 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    // Đăng nhập: chặn sớm nếu email đang bị tạm khoá do sai quá nhiều lần.
+    if (!_isRegister) {
+      final remaining = await LoginAttemptService.lockRemaining(email);
+      if (remaining != null) {
+        setState(() => _error = _lockedMessage(remaining));
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -92,6 +102,8 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           password: password,
         ).timeout(const Duration(seconds: 15));
+        // Đăng nhập thành công → xoá bộ đếm sai của email này.
+        await LoginAttemptService.reset(email);
         role = await RoleService().loadRoleForUser(credential.user!).timeout(const Duration(seconds: 8));
       }
 
@@ -105,7 +117,12 @@ class _AuthScreenState extends State<AuthScreen> {
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = _messageForAuthError(e));
+      // Sai mật khẩu ở luồng ĐĂNG NHẬP → đếm và cảnh báo / khoá.
+      if (!_isRegister && _isWrongCredential(e)) {
+        await _handleWrongCredential(email, e);
+      } else {
+        setState(() => _error = _messageForAuthError(e));
+      }
     } on TimeoutException {
       setState(() => _error = 'Kết nối Firebase quá lâu. Kiểm tra mạng, Firebase config hoặc Firestore rules rồi thử lại.');
     } catch (e) {
@@ -115,6 +132,72 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Lỗi Firebase có phải do sai email/mật khẩu không (để đếm vào ngưỡng khoá).
+  bool _isWrongCredential(FirebaseAuthException e) {
+    return e.code == 'wrong-password' ||
+        e.code == 'invalid-credential' ||
+        e.code == 'user-not-found';
+  }
+
+  /// Đếm lần sai, rồi: khoá nếu quá ngưỡng, cảnh báo đỏ nếu tới ngưỡng, hoặc
+  /// chỉ báo sai như thường.
+  Future<void> _handleWrongCredential(
+    String email,
+    FirebaseAuthException e,
+  ) async {
+    final status = await LoginAttemptService.recordFailure(email);
+    if (!mounted) return;
+
+    if (status.justLocked) {
+      setState(() => _error = _lockedMessage(status.lockRemaining!));
+      _showBottomAlert(
+        'Bạn đã nhập sai ${LoginAttemptService.lockThreshold} lần. '
+        'Tài khoản bị khoá đăng nhập 30 phút.',
+      );
+      return;
+    }
+
+    setState(() => _error = _messageForAuthError(e));
+    if (status.shouldWarn) {
+      _showBottomAlert(
+        'Bạn đã nhập sai ${status.failCount} lần. '
+        'Nhập sai quá ${LoginAttemptService.lockThreshold} lần sẽ bị khoá tài khoản 30 phút.',
+      );
+    }
+  }
+
+  String _lockedMessage(Duration remaining) {
+    final minutes = remaining.inMinutes + 1; // làm tròn lên cho thân thiện
+    return 'Tài khoản tạm bị khoá do nhập sai quá nhiều lần. '
+        'Vui lòng thử lại sau khoảng $minutes phút.';
+  }
+
+  /// Popup báo đỏ ở dưới màn hình (cảnh báo số lần sai).
+  void _showBottomAlert(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: AppTextStyles.latin(size: 13, color: Colors.white, weight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFFD32F2F),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<void> _signInWithGoogle() async {
