@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/services/google_auth_service.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -116,6 +117,72 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final credential = await GoogleAuthService.signIn()
+          .timeout(const Duration(seconds: 60));
+      final user = credential.user!;
+      // Tài khoản Google mới thì tạo hồ sơ, đã có thì nạp quyền.
+      final isNew = credential.additionalUserInfo?.isNewUser ?? false;
+      final role = isNew
+          ? await RoleService().createCustomerProfile(user).timeout(const Duration(seconds: 8))
+          : await RoleService().loadRoleForUser(user).timeout(const Duration(seconds: 8));
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => role.canManageContent
+              ? const AdminHomeScreen()
+              : const MainNavigation(),
+        ),
+        (route) => false,
+      );
+    } on TimeoutException {
+      setState(() => _error = 'Kết nối Google/Firebase quá lâu. Thử lại nhé.');
+    } catch (e) {
+      setState(() => _error = GoogleAuthService.messageForError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _error = 'Nhập email của bạn ở ô trên rồi bấm "Quên mật khẩu" nhé.');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: email)
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Đã gửi email đặt lại mật khẩu tới $email. Kiểm tra hộp thư (cả mục Spam).'),
+          backgroundColor: AppColors.brandDark,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() => _error = _messageForAuthError(e));
+    } on TimeoutException {
+      setState(() => _error = 'Gửi email quá lâu. Kiểm tra mạng rồi thử lại.');
+    } catch (e) {
+      setState(() => _error = 'Không gửi được email đặt lại mật khẩu: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   String _messageForAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
@@ -222,10 +289,56 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ],
+                if (!_isRegister) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isLoading ? null : _forgotPassword,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Quên mật khẩu?',
+                        style: AppTextStyles.latin(size: 13, color: AppColors.brandDark, weight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   child: Text(_isLoading ? 'Đang xử lý...' : (_isRegister ? 'Đăng ký' : 'Đăng nhập')),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: AppColors.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'hoặc',
+                        style: AppTextStyles.latin(size: 12, color: AppColors.textFaint, weight: FontWeight.w600),
+                      ),
+                    ),
+                    const Expanded(child: Divider(color: AppColors.border)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _signInWithGoogle,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: AppColors.border, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const _GoogleGlyph(),
+                  label: Text(
+                    'Tiếp tục với Google',
+                    style: AppTextStyles.latin(size: 15, weight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Center(
@@ -248,6 +361,35 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chữ "G" 4 màu của Google (vẽ bằng shader để khỏi bundle asset ảnh).
+class _GoogleGlyph extends StatelessWidget {
+  const _GoogleGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [
+          Color(0xFF4285F4), // xanh dương
+          Color(0xFFEA4335), // đỏ
+          Color(0xFFFBBC05), // vàng
+          Color(0xFF34A853), // xanh lá
+        ],
+        stops: [0.0, 0.4, 0.7, 1.0],
+      ).createShader(bounds),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          height: 1.0,
+        ),
       ),
     );
   }

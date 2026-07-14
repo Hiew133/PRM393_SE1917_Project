@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/services/data_repository.dart';
+import '../../core/services/google_auth_service.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -286,6 +287,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
+  }
+
+  bool _isLinkingGoogle = false;
+
+  Future<void> _linkGoogle() async {
+    if (_isLinkingGoogle) return;
+    setState(() => _isLinkingGoogle = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await GoogleAuthService.linkToCurrentUser()
+          .timeout(const Duration(seconds: 60));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã liên kết tài khoản Google! Lần sau bạn có thể đăng nhập bằng Google.'),
+          backgroundColor: AppColors.brandDark,
+        ),
+      );
+      setState(() {}); // vẽ lại: ẩn nút liên kết
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(GoogleAuthService.messageForError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLinkingGoogle = false);
+    }
   }
 
   void _logout() async {
@@ -761,6 +789,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   },
                 ),
+                // Liên kết Google: chỉ hiện cho tài khoản đã đăng nhập mà
+                // CHƯA liên kết Google (vd đăng ký bằng email/mật khẩu).
+                if (!isGuest && !GoogleAuthService.isGoogleLinked()) ...[
+                  const Divider(height: 1, color: AppColors.border),
+                  _MenuTile(
+                    icon: Icons.link_rounded,
+                    iconColor: AppColors.brandDark,
+                    title: 'Liên kết tài khoản Google',
+                    subtitle: 'Đăng nhập nhanh bằng Google ở lần sau',
+                    trailing: _isLinkingGoogle
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right_rounded, color: AppColors.textFaint),
+                    onTap: _isLinkingGoogle ? null : _linkGoogle,
+                  ),
+                ],
                 if (!isGuest) ...[
                   const Divider(height: 1, color: AppColors.border),
                   _MenuTile(

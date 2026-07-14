@@ -130,33 +130,6 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ),
                         ),
-                        const SizedBox(height: 14),
-                        GestureDetector(
-                          onTap: () => _openAuth(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.6)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.school_outlined,
-                                    size: 16, color: AppColors.textSecondary),
-                                const SizedBox(width: 6),
-                                Text('Vào trang Giảng viên (Admin)',
-                                    style: AppTextStyles.latin(
-                                        size: 13,
-                                        weight: FontWeight.w600,
-                                        color: AppColors.textSecondary)),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
