@@ -1,13 +1,12 @@
-/// Một câu hỏi ngữ pháp cho trò chơi "Thủ môn bắt bóng".
+/// Một câu hỏi trắc nghiệm cho trò chơi "Thủ môn bắt bóng".
 ///
 /// Câu hỏi được VIẾT CỨNG (không tải Firestore) để mở trò chơi tức thì,
-/// không lag. Nội dung bám sát 6 mẫu ngữ pháp N5 mà app đang dạy
-/// (は・です・と・の・じゃありません・か・từ để hỏi) — xem [kGrammarPoints].
+/// không lag. Bộ hiện tại ôn CÁCH ĐỌC / CÁCH VIẾT Hiragana.
 class FootballQuestion {
-  /// Câu tiếng Nhật có chỗ trống (đánh dấu bằng '＿＿＿').
+  /// Nội dung chính được hỏi (từ tiếng Nhật hoặc romaji trong ngoặc).
   final String sentence;
 
-  /// Nghĩa / gợi ý tiếng Việt của câu.
+  /// Câu hỏi / gợi ý bằng tiếng Việt.
   final String hintVi;
 
   /// 4 đáp án.
@@ -32,102 +31,112 @@ class FootballQuestion {
 
 /// Ngân hàng câu hỏi (viết cứng). Mỗi ván bốc ngẫu nhiên N câu.
 const List<FootballQuestion> kFootballQuestions = [
+  // ── Nhóm 1: Từ vựng đặc biệt ─────────────────────────────
   FootballQuestion(
-    sentence: 'わたし＿＿＿がくせいです。',
-    hintVi: 'Tôi là học sinh.',
-    options: ['は', 'を', 'の', 'と'],
-    correctIndex: 0,
-    explain: 'は là trợ từ chủ đề: "A は B です" (A thì là B).',
+    sentence: '「doki doki」',
+    hintVi: 'Tiếng tim đập thình thịch — viết bằng Hiragana nào?',
+    options: ['ときとき', 'どきどき', 'どきとき', 'ときどき'],
+    correctIndex: 1,
+    explain: 'ど (do) + き (ki) lặp lại: どきどき.',
   ),
   FootballQuestion(
-    sentence: 'これは にほんご＿＿＿ ほんです。',
-    hintVi: 'Đây là sách tiếng Nhật.',
-    options: ['の', 'は', 'と', 'を'],
+    sentence: '「fuwa fuwa」',
+    hintVi: 'Bồng bềnh, mềm mại — viết thế nào?',
+    options: ['ふわふわ', 'ほわほわ', 'はわはわ', 'ぬわぬわ'],
     correctIndex: 0,
-    explain: 'の nối 2 danh từ: N1 の N2 (sách "của" tiếng Nhật).',
+    explain: 'ふ (fu) + わ (wa) lặp lại: ふわふわ.',
   ),
   FootballQuestion(
-    sentence: 'しゅみは サッカー＿＿＿ どくしょです。',
-    hintVi: 'Sở thích là bóng đá và đọc sách.',
-    options: ['と', 'の', 'は', 'か'],
-    correctIndex: 0,
-    explain: 'と dùng để liệt kê danh từ: N1 と N2 (… và …).',
+    sentence: '「kimochi」',
+    hintVi: 'Cảm giác, cảm xúc — viết thế nào?',
+    options: ['ぎもち', 'さもち', 'きまつ', 'きもち'],
+    correctIndex: 3,
+    explain: 'き (ki) + も (mo) + ち (chi): きもち.',
   ),
   FootballQuestion(
-    sentence: 'わたしは がくせい＿＿＿。',
-    hintVi: 'Tôi KHÔNG phải là học sinh.',
-    options: ['じゃありません', 'です', 'ですか', 'の'],
+    sentence: '「yamete」',
+    hintVi: 'Dừng lại đi / đừng mà — viết thế nào?',
+    options: ['かめて', 'ゆめて', 'やめて', 'やねて'],
+    correctIndex: 2,
+    explain: 'や (ya) + め (me) + て (te): やめて.',
+  ),
+  // ── Nhóm 2: Hiragana cơ bản ──────────────────────────────
+  FootballQuestion(
+    sentence: 'ねこ',
+    hintVi: 'Từ này (con mèo) phát âm là gì?',
+    options: ['Neko', 'Inu', 'Tori', 'Sakana'],
     correctIndex: 0,
-    explain: 'じゃありません là dạng phủ định của です.',
+    explain: 'ね (ne) + こ (ko) = Neko (con mèo).',
   ),
   FootballQuestion(
-    sentence: 'パクさんは がくせいです＿＿＿。',
-    hintVi: 'Bạn Park có phải là sinh viên không?',
-    options: ['か', 'の', 'と', 'は'],
-    correctIndex: 0,
-    explain: 'Thêm か cuối câu để tạo câu hỏi Yes/No.',
+    sentence: 'いぬ',
+    hintVi: 'Từ này (con chó) phát âm là gì?',
+    options: ['Neko', 'Inu', 'Uma', 'Usagi'],
+    correctIndex: 1,
+    explain: 'い (i) + ぬ (nu) = Inu (con chó).',
   ),
   FootballQuestion(
-    sentence: 'あなたの なまえは ＿＿＿ですか。',
-    hintVi: 'Tên của bạn là gì?',
-    options: ['なん', 'だれ', 'どこ', 'いくら'],
-    correctIndex: 0,
-    explain: 'なん(何) = "gì", hỏi tên/sự vật.',
+    sentence: 'さくら',
+    hintVi: 'Hoa anh đào — Romaji là gì?',
+    options: ['Sikura', 'Sakura', 'Sukura', 'Kakura'],
+    correctIndex: 1,
+    explain: 'さ (sa) + く (ku) + ら (ra) = Sakura.',
   ),
   FootballQuestion(
-    sentence: 'これは ＿＿＿ですか。ごひゃくえんです。',
-    hintVi: 'Cái này bao nhiêu tiền? — 500 yên.',
-    options: ['いくら', 'いつ', 'どこ', 'だれ'],
+    sentence: 'すし',
+    hintVi: 'Món sushi — gồm những chữ nào ghép lại?',
+    options: ['Su + Shi', 'So + Shi', 'Nu + Chi', 'Tsu + Ki'],
     correctIndex: 0,
-    explain: 'いくら = "bao nhiêu tiền".',
+    explain: 'す (su) + し (shi) = Sushi.',
   ),
   FootballQuestion(
-    sentence: 'Aさんは FPT＿＿＿ しゃいんです。',
-    hintVi: 'Bạn A là nhân viên của FPT.',
-    options: ['の', 'と', 'は', 'を'],
+    sentence: 'わたし',
+    hintVi: 'Tôi — Romaji là gì?',
+    options: ['Watashi', 'Atashi', 'Anata', 'Tomodachi'],
     correctIndex: 0,
-    explain: 'の chỉ sự trực thuộc: nhân viên "của" FPT.',
+    explain: 'わ (wa) + た (ta) + し (shi) = Watashi.',
   ),
   FootballQuestion(
-    sentence: 'そちらは ＿＿＿ですか。',
-    hintVi: 'Đó là ai vậy?',
-    options: ['だれ', 'なに', 'どこ', 'いくら'],
+    sentence: 'あさ',
+    hintVi: 'Buổi sáng — đọc là gì?',
+    options: ['Aka', 'Ame', 'Asa', 'Soko'],
+    correctIndex: 2,
+    explain: 'あ (a) + さ (sa) = Asa.',
+  ),
+  // ── Nhóm 3: Giao tiếp & biến âm ──────────────────────────
+  FootballQuestion(
+    sentence: 'おはよう',
+    hintVi: 'Chào buổi sáng — Romaji chính xác?',
+    options: ['Ohayou', 'Ohiyou', 'Oheyou', 'Okayou'],
     correctIndex: 0,
-    explain: 'だれ(誰) = "ai", hỏi về người.',
+    explain: 'お-は-よ-う = Ohayou.',
   ),
   FootballQuestion(
-    sentence: 'カルロスさんは ＿＿＿ですか。２５さいです。',
-    hintVi: 'Bạn Carlos bao nhiêu tuổi? — 25 tuổi.',
-    options: ['なんさい', 'なんじ', 'どこ', 'いくら'],
-    correctIndex: 0,
-    explain: 'なんさい(何歳) = "mấy tuổi".',
+    sentence: 'ありがとう',
+    hintVi: 'Cảm ơn — đọc như thế nào?',
+    options: ['Aligato', 'Arigatou', 'Arikatou', 'Arigatoo'],
+    correctIndex: 1,
+    explain: 'あ-り-が-と-う = Arigatou (が là biến âm).',
   ),
   FootballQuestion(
-    sentence: 'わたしは Sonです。Sonさん＿＿＿ がくせいです。',
-    hintVi: 'Tôi là Sơn. Bạn Sơn là sinh viên.',
-    options: ['は', 'を', 'の', 'か'],
-    correctIndex: 0,
-    explain: 'は nêu chủ đề của câu.',
+    sentence: 'かぞく',
+    hintVi: 'Gia đình (có tenten) — đọc là gì?',
+    options: ['Kasoku', 'Kazoku', 'Katoku', 'Kanoku'],
+    correctIndex: 1,
+    explain: 'ぞ = そ + tenten = zo → Kazoku.',
   ),
   FootballQuestion(
-    sentence: 'きょうしつは ＿＿＿ですか。にかいです。',
-    hintVi: 'Phòng học ở đâu? — Ở tầng 2.',
-    options: ['どこ', 'いつ', 'だれ', 'なん'],
+    sentence: 'ふじさん',
+    hintVi: 'Núi Phú Sĩ — Romaji là gì?',
+    options: ['Fujisan', 'Hujihan', 'Fujichan', 'Huzisan'],
     correctIndex: 0,
-    explain: 'どこ = "ở đâu", hỏi địa điểm.',
+    explain: 'ふ-じ-さ-ん = Fujisan (じ = ji).',
   ),
   FootballQuestion(
-    sentence: 'これは ほん＿＿＿ありません。ノートです。',
-    hintVi: 'Đây không phải sách. Là quyển vở.',
-    options: ['じゃ', 'は', 'の', 'と'],
-    correctIndex: 0,
-    explain: '本じゃありません = "không phải là sách".',
-  ),
-  FootballQuestion(
-    sentence: 'たんじょうびは ＿＿＿ですか。',
-    hintVi: 'Sinh nhật là khi nào?',
-    options: ['いつ', 'どこ', 'なん', 'だれ'],
-    correctIndex: 0,
-    explain: 'いつ = "khi nào", hỏi thời gian.',
+    sentence: 'こんにちは',
+    hintVi: 'Chữ cuối 「は」 ở đây phát âm là gì?',
+    options: ['Ha', 'Wa', 'Wo', 'Na'],
+    correctIndex: 1,
+    explain: 'は khi làm trợ từ đọc là "wa": Konnichiwa.',
   ),
 ];

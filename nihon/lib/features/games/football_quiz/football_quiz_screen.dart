@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'football_question.dart';
 
-/// Trò chơi "Thủ môn bắt bóng" — trả lời ngữ pháp theo kiểu đá bóng.
+/// Trò chơi "Thủ môn bắt bóng" — trả lời trắc nghiệm theo kiểu đá bóng.
 ///
-/// Chọn áo số (1–10) và số câu (5/7/10) → mỗi câu chọn 1 trong 4 đáp án:
-/// đúng thì bóng bay vào lưới (ghi bàn), sai thì thủ môn bắt được.
+/// Chọn số câu (5/7/10) → mỗi câu chọn 1 trong 4 đáp án trong 30 giây:
+/// đúng thì bóng bay vào lưới (ghi bàn), sai/hết giờ thì bị chặn.
 /// Câu hỏi viết cứng ([kFootballQuestions]) nên mở là chơi ngay, không lag.
 class FootballQuizScreen extends StatefulWidget {
   const FootballQuizScreen({super.key});
@@ -48,8 +51,18 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
   int? _picked;
   bool _answered = false;
   bool _lastCorrect = false;
+  bool _timedOut = false;
+
+  /// Giới hạn thời gian mỗi câu.
+  static const int _kSecondsPerQuestion = 30;
+  int _secondsLeft = _kSecondsPerQuestion;
+  Timer? _questionTimer;
 
   late final AnimationController _ballCtrl;
+
+  /// Nhạc nền của trò chơi (lặp vô hạn).
+  final AudioPlayer _bgm = AudioPlayer();
+  bool _musicStarted = false;
 
   @override
   void initState() {
@@ -58,11 +71,15 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
       vsync: this,
       duration: const Duration(milliseconds: 750),
     );
+    _bgm.setReleaseMode(ReleaseMode.loop); // hết bài thì tự phát lại
   }
 
   @override
   void dispose() {
+    _questionTimer?.cancel();
     _ballCtrl.dispose();
+    _bgm.stop();
+    _bgm.dispose();
     super.dispose();
   }
 
@@ -74,24 +91,53 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
       return _RoundQuestion(q, opts, opts.indexOf(q.correctAnswer));
     }).toList();
 
+    // Bật nhạc ngay trong cử chỉ chạm "Vào sân" (web chặn autoplay nếu không).
+    if (!_musicStarted) {
+      _musicStarted = true;
+      _bgm.play(AssetSource('audio/game_bgm.mp3'), volume: 0.45).catchError(
+        (e) => debugPrint('BGM play failed: $e'),
+      );
+    }
+
     setState(() {
       _round = picked;
       _index = 0;
       _goals = 0;
       _picked = null;
       _answered = false;
+      _timedOut = false;
       _phase = _Phase.playing;
+    });
+    _startQuestionTimer();
+  }
+
+  /// Đếm ngược 30s cho câu hiện tại; hết giờ thì tự bỏ qua câu.
+  void _startQuestionTimer() {
+    _questionTimer?.cancel();
+    setState(() => _secondsLeft = _kSecondsPerQuestion);
+    _questionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_secondsLeft <= 1) {
+        t.cancel();
+        _resolveAnswer(null, timedOut: true);
+      } else {
+        setState(() => _secondsLeft--);
+      }
     });
   }
 
-  Future<void> _answer(int optionIndex) async {
+  void _answer(int optionIndex) => _resolveAnswer(optionIndex, timedOut: false);
+
+  Future<void> _resolveAnswer(int? optionIndex, {required bool timedOut}) async {
     if (_answered) return;
+    _questionTimer?.cancel();
     final q = _round[_index];
-    final correct = optionIndex == q.correctIndex;
+    final correct = optionIndex != null && optionIndex == q.correctIndex;
     setState(() {
       _picked = optionIndex;
       _answered = true;
       _lastCorrect = correct;
+      _timedOut = timedOut;
       if (correct) _goals++;
     });
 
@@ -106,7 +152,9 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
         _index++;
         _picked = null;
         _answered = false;
+        _timedOut = false;
       });
+      _startQuestionTimer();
     }
   }
 
@@ -148,7 +196,7 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
                   textAlign: TextAlign.center,
                   style: AppTextStyles.latin(size: 26, weight: FontWeight.w900, color: Colors.white)),
               const SizedBox(height: 6),
-              Text('Trả lời ngữ pháp đúng để sút tung lưới!',
+              Text('Trả lời đúng trong 30 giây để sút tung lưới!',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.latin(size: 14, color: Colors.white70)),
               const SizedBox(height: 24),
@@ -272,6 +320,7 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
           const SizedBox(width: 8),
           _hudChip('$_goals bàn', Icons.emoji_events, color: AppColors.brand),
           const Spacer(),
+          _TimerChip(seconds: _secondsLeft),
         ],
       ),
     );
@@ -461,7 +510,9 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
             ],
           ),
           child: Text(
-            correct ? '⚽ VÀO! Ghi bàn!' : '🧤 Thủ môn bắt được!',
+            correct
+                ? '⚽ VÀO! Ghi bàn!'
+                : (_timedOut ? '⏰ Hết giờ!' : '🧤 Thủ môn bắt được!'),
             style: AppTextStyles.latin(size: 15, weight: FontWeight.w900, color: Colors.white),
           ),
         ),
@@ -604,7 +655,7 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
                     side: const BorderSide(color: Colors.white70, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: Text('Về phần Ngữ pháp',
+                  child: Text('Thoát',
                       style: AppTextStyles.latin(size: 15, weight: FontWeight.w700, color: Colors.white)),
                 ),
               ),
@@ -612,6 +663,33 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Chip đếm ngược thời gian trên HUD (đỏ khi sắp hết giờ).
+class _TimerChip extends StatelessWidget {
+  final int seconds;
+  const _TimerChip({required this.seconds});
+
+  @override
+  Widget build(BuildContext context) {
+    final low = seconds <= 5;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: low ? AppColors.vocab : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.timer_outlined, size: 15, color: Colors.white),
+          const SizedBox(width: 5),
+          Text('${seconds}s',
+              style: AppTextStyles.latin(size: 12, weight: FontWeight.w800, color: Colors.white)),
+        ],
+      ),
     );
   }
 }

@@ -8,14 +8,12 @@ import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/skill.dart';
-import '../../data/models/srs_card.dart';
-import '../review/kanji_review_screen.dart';
+import '../games/football_quiz/football_quiz_screen.dart';
 import '../lessons/grammar_lessons_screen.dart';
 import '../lessons/kanji_lessons_screen.dart';
 import '../listening/screens/listening_list_screen.dart';
 import '../speaking/level_select_screen.dart';
 import '../welcome/welcome_screen.dart';
-import 'widgets/resume_card.dart';
 import 'widgets/skill_card.dart';
 
 /// Màn 02 – Dashboard / Trang chủ.
@@ -50,39 +48,15 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
-    final repository = DataRepository();
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
-        ValueListenableBuilder<List<CardProgress>>(
-          valueListenable: repository.srsCardsNotifier,
-          builder: (context, srsList, child) {
-            final now = DateTime.now();
-            final dueCount = srsList
-                .where((card) => !card.nextReview.isAfter(now))
-                .length;
-
-            final String title;
-            final String subtitle;
-            if (dueCount > 0) {
-              title = '漢字 · Ôn tập';
-              subtitle = 'Bạn đang có $dueCount chữ Kanji cần ôn tập ngay';
-            } else {
-              title = '漢字 · Đã hoàn thành';
-              subtitle = 'Tuyệt vời! Bạn không có chữ Kanji cần ôn hôm nay';
-            }
-
-            return ResumeCard(
-              title: title,
-              subtitle: subtitle,
-              onContinue: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const KanjiReviewScreen()),
-                );
-              },
+        _GameBanner(
+          onPlay: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
             );
           },
         ),
@@ -187,6 +161,101 @@ const List<List<Color>> kAvatarGradients = [
   [Color(0xFFF6D365), Color(0xFFFDA085)], // Sunset Orange
   [Color(0xFFA6C0FE), Color(0xFFF1EEFD)], // Lavender Purple
 ];
+
+/// Banner mở trò chơi "Thủ môn bắt bóng" (thay cho thẻ Tiếp tục học).
+class _GameBanner extends StatelessWidget {
+  const _GameBanner({required this.onPlay});
+
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPlay,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2E8B57), Color(0xFF3BAD6C)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.speaking.withValues(alpha: 0.28),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: const Text('⚽', style: TextStyle(fontSize: 26)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TRÒ CHƠI',
+                    style: AppTextStyles.latin(
+                      size: 10,
+                      weight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Thủ môn bắt bóng',
+                    style: AppTextStyles.latin(size: 16, weight: FontWeight.w800, color: Colors.white),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Ôn Hiragana theo kiểu đá bóng — sút tung lưới!',
+                    style: AppTextStyles.latin(
+                      size: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.brand,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Chơi',
+                    style: AppTextStyles.latin(size: 13, weight: FontWeight.w700, color: Colors.white),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text('→', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _UserHeader extends StatelessWidget {
   const _UserHeader();

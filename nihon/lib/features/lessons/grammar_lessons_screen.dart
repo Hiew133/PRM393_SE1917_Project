@@ -4,7 +4,6 @@ import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/guest_lock_dialog.dart';
-import '../games/football_quiz/football_quiz_screen.dart';
 import 'kanji_data.dart';
 
 class GrammarLessonsScreen extends StatelessWidget {
@@ -26,22 +25,7 @@ class GrammarLessonsScreen extends StatelessWidget {
           style: AppTextStyles.latin(size: 20, weight: FontWeight.w800, color: AppColors.textPrimary),
         ),
       ),
-      body: Column(
-        children: [
-          _PracticeBanner(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
-            ),
-          ),
-          Expanded(child: _buildGrammarList()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGrammarList() {
-    return ValueListenableBuilder<List<GrammarPoint>>(
+      body: ValueListenableBuilder<List<GrammarPoint>>(
         valueListenable: DataRepository().grammarPointsNotifier,
         builder: (context, grammarPoints, child) {
           if (grammarPoints.isEmpty) {
@@ -181,71 +165,6 @@ class GrammarLessonsScreen extends StatelessWidget {
             },
           );
         },
-      );
-  }
-}
-
-/// Nút "Luyện tập" mở trò chơi ngữ pháp kiểu đá bóng.
-class _PracticeBanner extends StatelessWidget {
-  final VoidCallback onTap;
-  const _PracticeBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2E8B57), Color(0xFF3BAD6C)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.speaking.withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Text('⚽', style: TextStyle(fontSize: 24)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Luyện tập: Thủ môn bắt bóng',
-                      style: AppTextStyles.latin(size: 15, weight: FontWeight.w800, color: Colors.white),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Trả lời ngữ pháp đúng để sút tung lưới!',
-                      style: AppTextStyles.latin(size: 12.5, color: Colors.white.withOpacity(0.9)),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 30),
-            ],
-          ),
-        ),
       ),
     );
   }
