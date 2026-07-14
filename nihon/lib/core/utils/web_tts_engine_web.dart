@@ -98,7 +98,16 @@ class WebTtsEngine {
     synth.cancel();
     synth.resume(); // gỡ trạng thái paused "kẹt" còn sót của Chrome
 
+    // Chrome nạp voice BẤT ĐỒNG BỘ: lúc mới mở trang getVoices() rỗng. Nếu
+    // đọc ngay, utterance rơi vào voice mặc định (tiếng Anh) — voice Anh gặp
+    // chữ Nhật thì im lặng dù sự kiện vẫn bắn đủ. Câu đầu tiên chờ voice
+    // tiếng Nhật tối đa ~1.5s.
     _jaVoice ??= _pickJaVoice();
+    for (var i = 0; i < 15 && _jaVoice == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (generation != _generation) return;
+      _jaVoice = _pickJaVoice();
+    }
     final voice = _jaVoice;
 
     var started = false;

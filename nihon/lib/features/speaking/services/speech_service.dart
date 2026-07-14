@@ -100,7 +100,11 @@ class SpeechService {
             }
           },
           listenOptions: SpeechListenOptions(
-            localeId: 'ja_JP',
+            // Android native nhận "ja_JP"; web thì plugin gán thẳng chuỗi này
+            // vào SpeechRecognition.lang — phải là BCP-47 "ja-JP", nếu sai
+            // trình duyệt rơi về ngôn ngữ hệ thống (nhận ra "Konichiwa"
+            // dạng romaji thay vì tiếng Nhật).
+            localeId: kIsWeb ? 'ja-JP' : 'ja_JP',
             partialResults: true, // giữ nhận diện liên tục cho câu dài
             listenMode: ListenMode.dictation,
             // KHÔNG hủy khi gặp lỗi: lúc ngừng giữa câu thiết bị hay bắn
