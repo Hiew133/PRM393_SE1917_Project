@@ -663,23 +663,84 @@ class _FootballQuizScreenState extends State<FootballQuizScreen>
   }
 }
 
-/// Quả bóng vẽ bằng widget (không tốn asset) để nhẹ và sắc nét mọi kích cỡ.
+/// Quả bóng vẽ bằng CustomPaint (không dùng font icon để tránh lỗi thiếu
+/// glyph trên web) — nhẹ và sắc nét mọi kích cỡ.
 class _SoccerBall extends StatelessWidget {
   final double size;
   const _SoccerBall({required this.size});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 3)),
-        ],
-      ),
-      child: Icon(Icons.sports_soccer, size: size, color: Colors.white),
+      child: CustomPaint(painter: _SoccerBallPainter()),
     );
   }
+}
+
+class _SoccerBallPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 2;
+
+    // Bóng đổ nhẹ.
+    canvas.drawCircle(
+      c.translate(0, r * 0.12),
+      r * 0.95,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.22)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.18),
+    );
+
+    // Thân bóng trắng, hơi khối bằng gradient.
+    final ball = Rect.fromCircle(center: c, radius: r);
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.3, -0.3),
+          colors: const [Colors.white, Color(0xFFDDDDDD)],
+        ).createShader(ball),
+    );
+
+    // Các mảng ngũ giác đen.
+    final black = Paint()..color = const Color(0xFF1A1A1A);
+    _pentagon(canvas, c, r * 0.34, 0, black); // mảng giữa
+    for (int i = 0; i < 5; i++) {
+      final ang = -pi / 2 + i * 2 * pi / 5;
+      final p = c + Offset(cos(ang), sin(ang)) * r * 0.66;
+      _pentagon(canvas, p, r * 0.2, ang + pi, black);
+    }
+
+    // Viền bóng.
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.05
+        ..color = const Color(0xFF888888),
+    );
+  }
+
+  void _pentagon(Canvas canvas, Offset center, double radius, double rot, Paint paint) {
+    final path = Path();
+    for (int i = 0; i < 5; i++) {
+      final a = rot - pi / 2 + i * 2 * pi / 5;
+      final o = center + Offset(cos(a), sin(a)) * radius;
+      if (i == 0) {
+        path.moveTo(o.dx, o.dy);
+      } else {
+        path.lineTo(o.dx, o.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
