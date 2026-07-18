@@ -219,7 +219,7 @@ class _SpeechAssessmentDialogState extends State<SpeechAssessmentDialog> with Ti
     _scoreRingController.forward();
   }
 
-  void _saveApiKey() {
+  Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
     await _assessmentService.setApiKey(key.isNotEmpty ? key : null);
     setState(() {
