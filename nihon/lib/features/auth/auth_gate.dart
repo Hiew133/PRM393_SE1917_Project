@@ -21,7 +21,10 @@ class AuthGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const _LoadingAuth();
         }
-        if (user == null) {
+        // Tài khoản ẩn danh (do module Luyện nghe tạo để lưu yêu thích theo
+        // máy) KHÔNG phải đăng nhập thật — vẫn coi là Guest, không được vào
+        // như customer.
+        if (user == null || user.isAnonymous) {
           RoleService().useGuestRole();
           return const WelcomeScreen();
         }

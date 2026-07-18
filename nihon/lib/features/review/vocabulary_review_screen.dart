@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import '../../core/services/data_repository.dart';
+import '../../core/services/role_service.dart';
+import '../../core/services/vocab_progress_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_config.dart';
 import '../../data/models/srs_stage.dart';
 import '../../data/models/vocab_card.dart';
-import 'widgets/srs_rating_button.dart';
 import 'widgets/vocab_flashcard.dart';
 import 'widgets/vocab_session_header.dart';
 
@@ -34,6 +36,17 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
   bool _sessionComplete = false;
   bool _isLoading = true;
   String? _error;
+
+  /// Thẻ hiện tại đã được lật xem đáp án chưa (phải lật mới được trả lời).
+  bool _revealed = false;
+
+  final VocabProgressService _progress = VocabProgressService();
+
+  /// Thứ tự doc id của phiên hiện tại — dùng để lưu/khôi phục "học đến đâu".
+  List<String> _orderIds = [];
+
+  /// Tên sách khớp với dữ liệu Firestore thực tế (sau khi thử fallback slug).
+  late String _effectiveBook = _normalizedBook;
 
   late AnimationController _cardAnim;
   late Animation<double> _cardFade;
@@ -106,6 +119,7 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
 
       // Lấy từ vựng theo sách và bài học được truyền vào. Một số màn hình cũ
       // truyền slug như "nhat_1", trong khi Firestore lưu "Nhật 1".
+      _effectiveBook = _normalizedBook;
       QuerySnapshot snapshot = await firestore
           .collection('vocabulary')
           .where('book', isEqualTo: _normalizedBook)
@@ -118,6 +132,7 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
             .where('book', isEqualTo: widget.book)
             .where('lesson', isEqualTo: widget.lesson)
             .get();
+        if (snapshot.docs.isNotEmpty) _effectiveBook = widget.book;
       }
 
       final List<VocabCard> loadedCards = snapshot.docs.map((doc) {
@@ -150,21 +165,57 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
         );
       }).toList();
 
-      // Đảo ngẫu nhiên danh sách để ôn tập hiệu quả hơn
-      loadedCards.shuffle();
+      // Áp cấp SRS đã lưu của user cho từng thẻ (guest: map rỗng).
+      final savedStages =
+          await _progress.loadCardStages(_effectiveBook, widget.lesson);
+      final byId = <String, VocabCard>{
+        for (final c in loadedCards)
+          if (c.id != null) c.id!: c,
+      };
+      savedStages.forEach((id, stage) {
+        byId[id]?.stage = stage;
+      });
 
+      // Khôi phục phiên dang dở nếu thứ tự đã lưu vẫn khớp bộ thẻ hiện tại;
+      // nếu không thì xáo mới. Phiên mới chỉ được ghi khi trả lời thẻ đầu.
+      final session =
+          await _progress.loadSession(_effectiveBook, widget.lesson);
+      int startIndex = 0;
+      int startXp = 0;
+      List<VocabCard> ordered;
+      final canResume = session != null &&
+          !session.done &&
+          session.order.isNotEmpty &&
+          session.order.length == byId.length &&
+          session.order.toSet().containsAll(byId.keys);
+      if (canResume) {
+        ordered = [for (final id in session.order) byId[id]!];
+        startIndex = session.index.clamp(0, ordered.length - 1);
+        startXp = session.xp;
+      } else {
+        loadedCards.shuffle();
+        ordered = loadedCards;
+      }
+      _orderIds = [
+        for (final c in ordered)
+          if (c.id != null) c.id!,
+      ];
+
+      if (!mounted) return;
       setState(() {
-        _cards = loadedCards;
-        _currentIndex = 0;
-        _sessionXp = 0;
+        _cards = ordered;
+        _currentIndex = startIndex;
+        _sessionXp = startXp;
         _sessionComplete = false;
+        _revealed = false;
         _isLoading = false;
       });
-      if (loadedCards.isNotEmpty) {
-        _updateControllersForCard(loadedCards[0]);
+      if (ordered.isNotEmpty) {
+        _updateControllersForCard(ordered[startIndex]);
       }
       _cardAnim.forward(from: 0);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -174,12 +225,25 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
 
   void _resetSession() {
     _cards.shuffle();
+    _orderIds = [
+      for (final c in _cards)
+        if (c.id != null) c.id!,
+    ];
     _currentIndex = 0;
     _sessionXp = 0;
     _sessionComplete = false;
+    _revealed = false;
     if (_cards.isNotEmpty) {
       _updateControllersForCard(_cards[0]);
     }
+    // Ghi đè phiên cũ bằng phiên mới bắt đầu lại từ đầu.
+    _progress.saveSession(
+      book: _effectiveBook,
+      lesson: widget.lesson,
+      order: _orderIds,
+      index: 0,
+      xp: 0,
+    );
   }
 
   VocabCard? get _currentCard =>
@@ -187,13 +251,28 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
 
   int get _reviewedCount => _sessionComplete ? _cards.length : _currentIndex;
 
-  Future<void> _onRate(SrsRating rating) async {
+  /// Trả lời thẻ hiện tại: đúng (✓) tiến cấp SRS, sai (✗) lùi cấp.
+  /// Không bắt buộc lật thẻ — thuộc rồi thì bấm ✓ đi tiếp luôn.
+  /// Tiến trình được lưu ngay sau mỗi câu trả lời.
+  Future<void> _onAnswer(bool correct) async {
     FocusManager.instance.primaryFocus?.unfocus();
     final card = _currentCard;
     if (card == null || _sessionComplete) return;
 
-    card.stage = rating.applyTo(card.stage);
-    setState(() => _sessionXp += rating.xpReward);
+    card.stage = correct ? card.stage.advance() : card.stage.regress();
+    final reward = correct ? 8 : 2;
+    setState(() => _sessionXp += reward);
+
+    // Lưu cấp SRS của thẻ (fire-and-forget; guest tự bỏ qua).
+    if (card.id != null) {
+      _progress.saveCardResult(
+        vocabId: card.id!,
+        book: _effectiveBook,
+        lesson: widget.lesson,
+        stage: card.stage,
+        correct: correct,
+      );
+    }
 
     await _cardAnim.reverse();
 
@@ -204,17 +283,36 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
         _currentIndex = _cards.length;
         _sessionComplete = true;
       });
+      _progress.completeSession(
+        book: _effectiveBook,
+        lesson: widget.lesson,
+        total: _cards.length,
+        xp: _sessionXp,
+      );
+      // Cộng XP của cả phiên vào tiến độ chung (dashboard / streak).
+      DataRepository().addXp(_sessionXp);
     } else {
       setState(() {
         _currentIndex++;
+        _revealed = false;
         _updateControllersForCard(_cards[_currentIndex]);
       });
+      _progress.saveSession(
+        book: _effectiveBook,
+        lesson: widget.lesson,
+        order: _orderIds,
+        index: _currentIndex,
+        xp: _sessionXp,
+      );
       _cardAnim.forward(from: 0);
     }
   }
 
   Future<void> _confirmExit() async {
-    if (_sessionComplete || AppConfig.isAdmin.value) {
+    // Tài khoản đăng nhập: tiến trình đã được lưu sau mỗi câu trả lời nên
+    // thoát thẳng, vào lại sẽ học tiếp từ chỗ cũ. Chỉ Guest mới mất tiến trình.
+    final isGuest = RoleService().currentRole.value == AppRole.guest;
+    if (_sessionComplete || AppConfig.isAdmin.value || !isGuest) {
       Navigator.pop(context);
       return;
     }
@@ -496,8 +594,12 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
                           child: SlideTransition(
                             position: _cardSlide,
                             child: VocabFlashcard(
-                              key: ValueKey(card.word),
+                              key: ValueKey(card.id ?? card.word),
                               card: card,
+                              // Admin duyệt thẻ thì xem thẳng đáp án, không cần lật.
+                              revealed: _revealed || AppConfig.isAdmin.value,
+                              onFlip: () =>
+                                  setState(() => _revealed = !_revealed),
                               isEditing: _isEditingCard,
                               jpController: _editingJpController,
                               readingController: _editingReadingController,
@@ -638,17 +740,31 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
                           ],
                         );
                       } else {
+                        // 2 nút tự đánh giá: ✗ chưa thuộc / ✓ đã thuộc.
+                        // Bấm được ngay, không cần lật thẻ (lật chỉ để xem đáp án).
                         return Row(
                           children: [
-                            for (final rating in SrsRating.values) ...[
-                              Expanded(
-                                child: SrsRatingButton(
-                                  rating: rating,
-                                  onTap: () => _onRate(rating),
-                                ),
+                            Expanded(
+                              child: _AnswerButton(
+                                icon: Icons.close_rounded,
+                                label: 'Chưa thuộc',
+                                color: const Color(0xFFDC2626),
+                                background: const Color(0xFFFEE2E2),
+                                borderColor: const Color(0xFFFECACA),
+                                onTap: () => _onAnswer(false),
                               ),
-                              if (rating != SrsRating.easy) const SizedBox(width: 8),
-                            ],
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _AnswerButton(
+                                icon: Icons.check_rounded,
+                                label: 'Đã thuộc',
+                                color: const Color(0xFF16A34A),
+                                background: const Color(0xFFF0FDF4),
+                                borderColor: const Color(0xFFBBF7D0),
+                                onTap: () => _onAnswer(true),
+                              ),
+                            ),
                           ],
                         );
                       }
@@ -666,6 +782,59 @@ class _VocabularyReviewScreenState extends State<VocabularyReviewScreen>
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: body,
+      ),
+    );
+  }
+}
+
+/// Nút trả lời ✗/✓.
+class _AnswerButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color background;
+  final Color borderColor;
+  final VoidCallback onTap;
+
+  const _AnswerButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.background,
+    required this.borderColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.latin(
+                  size: 15,
+                  weight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -846,7 +1015,7 @@ class _SessionCompleteView extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'XP kiếm được trong phiên này',
+                  'XP đã được cộng vào tiến độ của bạn',
                   style: AppTextStyles.latin(size: 12, color: AppColors.textFaint),
                 ),
               ],

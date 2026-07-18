@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import '../utils/app_config.dart';
+
 enum AppRole {
   admin,
   customer,
@@ -25,7 +27,13 @@ extension AppRoleInfo on AppRole {
 }
 
 class RoleService {
-  RoleService._internal();
+  RoleService._internal() {
+    // AppConfig.isAdmin (cờ bật UI quản trị) LUÔN đi theo role thật từ
+    // Firestore — không còn cách nào khác để bật nó ngoài đăng nhập admin.
+    currentRole.addListener(() {
+      AppConfig.isAdmin.value = currentRole.value == AppRole.admin;
+    });
+  }
 
   static final RoleService _instance = RoleService._internal();
   factory RoleService() => _instance;

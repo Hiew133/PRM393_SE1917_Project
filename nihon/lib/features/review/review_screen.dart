@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/services/role_service.dart';
+import '../../core/services/vocab_progress_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_config.dart';
@@ -32,12 +33,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
   String _screenTitle = 'Luyện Tập Từ Vựng';
   Map<String, String> _lessonTitles = {};
   bool _isLoadingSettings = true;
-  int _tapCount = 0;
+
+  // Tiến trình học của user hiện tại: lessonNumber -> phiên đã lưu.
+  Map<int, VocabSessionState> _lessonProgress = {};
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadLessonProgress();
+  }
+
+  /// Tải tiến trình "đã học đến đâu" của user cho giáo trình đang chọn.
+  Future<void> _loadLessonProgress() async {
+    final progress =
+        await VocabProgressService().loadBookProgress(_selectedBook);
+    if (!mounted) return;
+    setState(() => _lessonProgress = progress);
   }
 
   /// Tải cấu hình tiêu đề và mô tả giáo trình từ Firestore settings/review_screen
@@ -69,9 +81,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
               if (_booksMetadata['Nhật 2'] != null &&
                   _booksMetadata['Nhật 2']['desc'] == 'N3 - N2 (Trung cấp)') {
                 _booksMetadata['Nhật 2']['desc'] = 'N5 - N4 (Trung cấp)';
-                firestore.collection('settings').doc('review_screen').update({
-                  'booksMetadata': _booksMetadata,
-                }).catchError((e) => print("Lỗi khi tự động cập nhật mô tả Nhật 2: $e"));
+                // Chỉ admin mới được ghi sửa settings (Firestore rules chặn
+                // write từ tài khoản thường).
+                if (AppConfig.isAdmin.value) {
+                  firestore.collection('settings').doc('review_screen').update({
+                    'booksMetadata': _booksMetadata,
+                  }).catchError(
+                      (e) => debugPrint("Lỗi khi tự động cập nhật mô tả Nhật 2: $e"));
+                }
               }
             } else {
               // Hỗ trợ tương thích ngược
@@ -104,8 +121,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
             }
           });
         }
-      } else {
-        // Khởi tạo mặc định nếu chưa tồn tại
+      } else if (AppConfig.isAdmin.value) {
+        // Khởi tạo mặc định nếu chưa tồn tại — chỉ admin được tạo doc settings.
         await firestore.collection('settings').doc('review_screen').set({
           'screenTitle': 'Luyện Tập Từ Vựng',
           'books': ['Nhật 1', 'Nhật 2'],
@@ -245,13 +262,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final List<int> sortedLessons = uniqueLessons.toList();
       sortedLessons.sort();
 
-      // Cập nhật lại vào Firestore settings để dùng cho lần sau
+      // Cache lại trong bộ nhớ; chỉ admin mới được ghi ngược vào settings
+      // (Firestore rules chặn write từ tài khoản thường).
       setState(() {
         _bookLessons[book] = sortedLessons;
       });
-      await firestore.collection('settings').doc('review_screen').update({
-        'lessons': _bookLessons,
-      });
+      if (AppConfig.isAdmin.value) {
+        await firestore.collection('settings').doc('review_screen').update({
+          'lessons': _bookLessons,
+        });
+      }
 
       return sortedLessons;
     } catch (e) {
@@ -855,6 +875,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     }
                     await firestore.collection('vocabulary').add(data);
 
+                    // Nếu là bài mới chưa có trong cache danh sách bài của
+                    // settings thì bổ sung ngay — không thì bài mới sẽ không
+                    // bao giờ hiện ra trong lưới chọn bài.
+                    final cachedLessons =
+                        _bookLessons[selectedBookForWord] ?? <int>[];
+                    if (!cachedLessons.contains(lesson)) {
+                      cachedLessons.add(lesson);
+                      cachedLessons.sort();
+                      _bookLessons[selectedBookForWord] = cachedLessons;
+                      await firestore
+                          .collection('settings')
+                          .doc('review_screen')
+                          .set({'lessons': _bookLessons}, SetOptions(merge: true));
+                    }
+
                     messenger.showSnackBar(
                       SnackBar(
                         content: Text('Đã thêm từ mới vào Bài $lesson!'),
@@ -1288,14 +1323,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                 onTap: () {
                                   if (isAdmin) {
                                     _showEditScreenTitleDialog();
-                                  } else {
-                                    setState(() {
-                                      _tapCount++;
-                                    });
-                                    if (_tapCount >= 5) {
-                                      _tapCount = 0;
-                                      AppConfig.isAdmin.value = true;
-                                    }
                                   }
                                 },
                                 child: Text(
@@ -1390,6 +1417,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           setState(() {
                             _selectedBook = book;
                           });
+                          _loadLessonProgress();
                         },
                         child: Stack(
                           children: [
@@ -1673,7 +1701,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                         ),
                                   ),
                                 ).then((_) {
-                                  setState(() {});
+                                  // Vừa ôn xong quay lại: cập nhật "đã học đến đâu".
+                                  _loadLessonProgress();
                                 });
                               },
                               child: Container(
@@ -1722,37 +1751,57 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isLessonLocked
-                                                  ? Colors.grey.withValues(
-                                                      alpha: 0.15)
-                                                  : AppColors.speaking
-                                                      .withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              isLessonLocked
-                                                  ? 'Đăng nhập'
-                                                  : isAdmin
-                                                      ? 'Quản lý'
-                                                      : 'Sẵn sàng',
-                                              style: AppTextStyles.latin(
-                                                size: 10,
-                                                weight: FontWeight.w800,
-                                                color: isLessonLocked
-                                                    ? AppColors.textMuted
-                                                    : isAdmin
-                                                        ? Colors.blue
-                                                        : AppColors.speaking,
+                                          Builder(builder: (context) {
+                                            // Chip trạng thái: hiện "đã học
+                                            // đến đâu" nếu user có tiến trình.
+                                            final progress =
+                                                _lessonProgress[lessonNumber];
+                                            String label;
+                                            Color color;
+                                            if (isLessonLocked) {
+                                              label = 'Đăng nhập';
+                                              color = AppColors.textMuted;
+                                            } else if (isAdmin) {
+                                              label = 'Quản lý';
+                                              color = Colors.blue;
+                                            } else if (progress != null &&
+                                                progress.done) {
+                                              label = '✓ Hoàn thành';
+                                              color = const Color(0xFF16A34A);
+                                            } else if (progress != null &&
+                                                progress.total > 0) {
+                                              label =
+                                                  'Đang học ${progress.index}/${progress.total}';
+                                              color = const Color(0xFFD97706);
+                                            } else {
+                                              label = 'Sẵn sàng';
+                                              color = AppColors.speaking;
+                                            }
+                                            return Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 3,
                                               ),
-                                            ),
-                                          ),
+                                              decoration: BoxDecoration(
+                                                color: isLessonLocked
+                                                    ? Colors.grey.withValues(
+                                                        alpha: 0.15)
+                                                    : color.withValues(
+                                                        alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                label,
+                                                style: AppTextStyles.latin(
+                                                  size: 10,
+                                                  weight: FontWeight.w800,
+                                                  color: color,
+                                                ),
+                                              ),
+                                            );
+                                          }),
                                         ],
                                       ),
                                     ),
