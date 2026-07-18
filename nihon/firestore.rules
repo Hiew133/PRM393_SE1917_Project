@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// Rules cho database "default" (project prm393-project-857e1).
+// Triển khai: Firebase Console → Firestore → chọn database "default"
+// → tab Rules → dán nội dung này → Publish.
+// (Hoặc: firebase deploy --only firestore:rules nếu đã cài Firebase CLI.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Role thật lưu ở users/{uid}.role — do RoleService ghi khi đăng nhập.
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── Nội dung học chung: ai cũng đọc, chỉ admin được sửa ──
+    match /vocabulary/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /lessons/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /grammar_points/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Luyện nói: đề thi admin quản lý; điểm thì sinh viên ghi được ──
+    match /speaking/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /scores/{scoreId} {
+        allow read, write: if signedIn();
+      }
+      match /{sub}/{subId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    // ── Dữ liệu cá nhân: chủ tài khoản (hoặc admin) mới đọc/ghi được ──
+    match /users/{uid} {
+      allow read, write: if isSelf(uid) || isAdmin();
+
+      match /{sub=**} {
+        allow read, write: if isSelf(uid) || isAdmin();
+      }
+    }
+    match /user_stats/{uid} {
+      allow read, write: if isSelf(uid) || isAdmin();
+    }
+    match /listening/{uid} {
+      allow read, write: if isSelf(uid) || isAdmin();
+    }
+  }
+}
