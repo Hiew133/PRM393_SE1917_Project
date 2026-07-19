@@ -111,6 +111,7 @@ class SpeakingController extends ChangeNotifier {
   bool _sessionEnded = false;
   bool _analyzing = false; // đang chờ AI phân tích cuối buổi
   SessionAnalysis? _analysis; // kết quả phân tích (null = chưa kết thúc)
+  String? _historyDocId; // doc lịch sử đã lưu (để gắn thêm phân tích, khỏi trùng)
 
   Scenario get scenario => _scenario;
   bool get busy => _busy;
@@ -184,6 +185,7 @@ class SpeakingController extends ChangeNotifier {
     _sessionEnded = false;
     _analyzing = false;
     _analysis = null;
+    _historyDocId = null;
     _syncExamState();
     messages.add(ChatMessage.pendingAi());
     _busy = true;
@@ -427,6 +429,8 @@ class SpeakingController extends ChangeNotifier {
       }
       _replacePendingWithAi(turn);
       // Buổi THI vừa hoàn thành → lưu vào lịch sử (kèm điểm từng lượt).
+      // Nhớ doc id để nếu người dùng bấm "Xem phân tích" thì gắn thêm vào
+      // đúng bản ghi này thay vì tạo bản mới.
       if (_scenario.examDrill && _examFinished) {
         SpeakingHistoryService.saveSession(
           mode: _historyMode,
@@ -434,7 +438,7 @@ class SpeakingController extends ChangeNotifier {
           transcript: List.of(messages),
           score: _examTotalScore(),
           examScores: examTurnScores,
-        );
+        ).then((id) => _historyDocId = id);
       }
     } catch (e) {
       _failPending(e.toString());
@@ -449,11 +453,14 @@ class SpeakingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Kết thúc buổi luyện (chế độ Tự do / JPD316): gửi TOÀN BỘ hội thoại cho
-  /// AI PHÂN TÍCH (điểm tổng, điểm mạnh, cần cải thiện, góp ý từng câu) rồi
-  /// khóa mic. Không dùng cho thi Nhật 1/2 — chế độ đó tự kết thúc theo format.
+  /// Gửi TOÀN BỘ hội thoại cho AI PHÂN TÍCH (điểm tổng, điểm mạnh, cần cải
+  /// thiện, góp ý từng câu).
+  /// - Tự do / JPD316: gọi khi bấm "Kết thúc" — đồng thời khóa mic.
+  /// - Thi Nhật 1/2: gọi ĐƯỢC sau khi thi xong (nút "Xem phân tích" cạnh
+  ///   bảng điểm); trước đó bị chặn để không cắt ngang bài thi.
   Future<void> endSession() async {
-    if (_busy || _listening || _sessionEnded || _scenario.examDrill) return;
+    if (_busy || _listening || _sessionEnded) return;
+    if (_scenario.examDrill && !_examFinished) return;
     if (!hasUserTurn) return;
     await _speech.stopSpeaking(); // ngắt TTS đang đọc dở
     _busy = true;
@@ -466,14 +473,22 @@ class SpeakingController extends ChangeNotifier {
       if (_disposed) return; // đã thoát màn trong lúc chờ phân tích
       _analysis = result;
       _sessionEnded = true;
-      // Lưu buổi luyện + phân tích vào lịch sử.
-      SpeakingHistoryService.saveSession(
-        mode: _historyMode,
-        title: _scenario.viLabel,
-        transcript: List.of(messages),
-        score: result.overallScore,
-        analysis: result,
-      );
+      if (_historyDocId != null) {
+        // Buổi thi đã có bản ghi lịch sử → chỉ gắn thêm phân tích.
+        SpeakingHistoryService.attachAnalysis(
+          docId: _historyDocId!,
+          analysis: result,
+        );
+      } else {
+        // Buổi hội thoại: lưu buổi luyện + phân tích thành bản ghi mới.
+        SpeakingHistoryService.saveSession(
+          mode: _historyMode,
+          title: _scenario.viLabel,
+          transcript: List.of(messages),
+          score: result.overallScore,
+          analysis: result,
+        ).then((id) => _historyDocId = id);
+      }
       // Đọc to câu tạm biệt để buổi "gọi điện" kết thúc tự nhiên.
       _speech.speak(result.farewellJp);
     } catch (e) {

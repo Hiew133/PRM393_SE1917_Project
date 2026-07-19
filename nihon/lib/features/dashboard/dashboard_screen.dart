@@ -55,6 +55,15 @@ class DashboardScreen extends StatelessWidget {
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
+        // Bảng chữ cái Kana — giữ Ở TRÊN CÙNG theo yêu cầu.
+        _KanaBanner(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const KanaQuizScreen()),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
         Text('Các kỹ năng', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 12),
         // Lưới 2 cột cho 4 kỹ năng đầu + 1 hàng full-width cho kỹ năng cuối.
@@ -82,7 +91,7 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 10),
         // Luyện nói với AI — chỗ vào phần Nói (giữ DUY NHẤT một lối vào ở đây).
         _SpeakingButton(onTap: openSpeaking),
-        // Khu trò chơi — nằm DƯỚI phần Luyện nói.
+        // Trò chơi bóng đá — nằm DƯỚI phần Luyện nói.
         const SizedBox(height: 20),
         Text('Trò chơi', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 12),
@@ -102,14 +111,6 @@ class DashboardScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
                 );
               },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _KanaBanner(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const KanaQuizScreen()),
             );
           },
         ),

@@ -60,8 +60,26 @@ class SpeakingHistoryService {
           .doc(uid)
           .collection('speaking_sessions');
 
-  /// Lưu một buổi luyện vừa kết thúc. Fire-and-forget.
-  static Future<void> saveSession({
+  static Map<String, dynamic> _analysisToMap(SessionAnalysis analysis) => {
+        'overallScore': analysis.overallScore,
+        'summary': analysis.summary,
+        'strengths': analysis.strengths,
+        'improvements': analysis.improvements,
+        'sentenceNotes': [
+          for (final n in analysis.sentenceNotes)
+            {
+              'original': n.original,
+              'issue': n.issue,
+              'better': n.better,
+              'betterReading': n.betterReading,
+            },
+        ],
+        'farewellJp': analysis.farewellJp,
+      };
+
+  /// Lưu một buổi luyện vừa kết thúc. Trả về doc id (null nếu không lưu —
+  /// guest hoặc lỗi) để về sau còn gắn thêm phân tích.
+  static Future<String?> saveSession({
     required String mode,
     required String title,
     required List<ChatMessage> transcript,
@@ -71,8 +89,8 @@ class SpeakingHistoryService {
   }) async {
     try {
       final user = _user;
-      if (user == null) return;
-      await _col(user.uid).add({
+      if (user == null) return null;
+      final doc = await _col(user.uid).add({
         'mode': mode,
         'title': title,
         'score': score,
@@ -89,27 +107,30 @@ class SpeakingHistoryService {
                   'pronunciationScore': m.pronunciationScore,
               },
         ],
-        if (analysis != null)
-          'analysis': {
-            'overallScore': analysis.overallScore,
-            'summary': analysis.summary,
-            'strengths': analysis.strengths,
-            'improvements': analysis.improvements,
-            'sentenceNotes': [
-              for (final n in analysis.sentenceNotes)
-                {
-                  'original': n.original,
-                  'issue': n.issue,
-                  'better': n.better,
-                  'betterReading': n.betterReading,
-                },
-            ],
-            'farewellJp': analysis.farewellJp,
-          },
+        if (analysis != null) 'analysis': _analysisToMap(analysis),
         if (examScores.isNotEmpty) 'examScores': examScores,
       });
+      return doc.id;
     } catch (e) {
       debugPrint('SpeakingHistory: lỗi lưu buổi luyện: $e');
+      return null;
+    }
+  }
+
+  /// Gắn phân tích AI vào một buổi ĐÃ LƯU (buổi thi: lưu lúc thi xong, phân
+  /// tích chạy sau khi bấm nút) — tránh tạo bản ghi trùng.
+  static Future<void> attachAnalysis({
+    required String docId,
+    required SessionAnalysis analysis,
+  }) async {
+    try {
+      final user = _user;
+      if (user == null) return;
+      await _col(user.uid)
+          .doc(docId)
+          .set({'analysis': _analysisToMap(analysis)}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('SpeakingHistory: lỗi gắn phân tích: $e');
     }
   }
 

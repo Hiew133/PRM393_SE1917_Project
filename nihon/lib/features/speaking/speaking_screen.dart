@@ -137,7 +137,15 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                   ErrorBanner(message: _controller.error!),
                 Expanded(child: _stage()),
                 if (_isExamDrill && _controller.examFinished)
-                  ExamDoneBar(onBack: () => Navigator.maybePop(context))
+                  ExamDoneBar(
+                    onBack: () => Navigator.maybePop(context),
+                    // Chưa phân tích thì hiện nút; phân tích rồi thì ẩn
+                    // (kết quả đã nằm ở giữa màn hình).
+                    onAnalyze: _controller.analysis == null
+                        ? _controller.endSession
+                        : null,
+                    analyzing: _controller.analyzing,
+                  )
                 else if (_controller.sessionEnded)
                   SessionEndedBar(onRestart: _controller.restart)
                 else

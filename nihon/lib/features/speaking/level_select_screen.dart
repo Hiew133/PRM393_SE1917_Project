@@ -426,6 +426,21 @@ class LevelSelectScreen extends StatelessWidget {
                       ? showGuestLockDialog(context)
                       : _startFree(context),
                 ),
+                const SizedBox(height: 20),
+                // Lối vào LỊCH SỬ — to rõ, không chỉ là icon nhỏ trên appbar.
+                _LevelCard(
+                  emoji: '📜',
+                  color: AppColors.brandDark,
+                  title: 'Lịch sử luyện nói',
+                  subtitle:
+                      'Xem lại điểm, phân tích và hội thoại các buổi đã luyện',
+                  locked: isGuest,
+                  onTap: () => isGuest
+                      ? showGuestLockDialog(context)
+                      : Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const SpeakingHistoryScreen(),
+                        )),
+                ),
               ],
             );
           },

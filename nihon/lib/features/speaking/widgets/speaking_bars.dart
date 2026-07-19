@@ -37,10 +37,19 @@ class SessionEndedBar extends StatelessWidget {
   }
 }
 
-/// Thanh thay cho mic khi đã thi xong (chế độ thi Nhật 1).
+/// Thanh thay cho mic khi đã thi xong (chế độ thi Nhật 1 / Nhật 2).
+/// [onAnalyze]: nhờ AI phân tích & góp ý cả bài thi (null = ẩn nút — đã
+/// phân tích rồi); [analyzing]: đang chờ AI, nút hiện spinner.
 class ExamDoneBar extends StatelessWidget {
   final VoidCallback onBack;
-  const ExamDoneBar({super.key, required this.onBack});
+  final VoidCallback? onAnalyze;
+  final bool analyzing;
+  const ExamDoneBar({
+    super.key,
+    required this.onBack,
+    this.onAnalyze,
+    this.analyzing = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,21 +58,59 @@ class ExamDoneBar extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle, color: AppColors.speaking, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Đã hoàn thành phần thi.',
-                style: AppTextStyles.latin(
-                    size: 13, weight: FontWeight.w600)),
+          Row(
+            children: [
+              const Icon(Icons.check_circle,
+                  color: AppColors.speaking, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Đã hoàn thành phần thi.',
+                    style:
+                        AppTextStyles.latin(size: 13, weight: FontWeight.w600)),
+              ),
+              TextButton.icon(
+                onPressed: onBack,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Bốc đề khác'),
+                style:
+                    TextButton.styleFrom(foregroundColor: AppColors.speaking),
+              ),
+            ],
           ),
-          TextButton.icon(
-            onPressed: onBack,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Bốc đề khác'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.speaking),
-          ),
+          if (onAnalyze != null || analyzing) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: analyzing ? null : onAnalyze,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.speaking,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: analyzing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.insights_rounded, size: 18),
+                label: Text(
+                  analyzing
+                      ? 'Đang phân tích bài thi…'
+                      : 'Xem phân tích & góp ý chi tiết',
+                  style:
+                      AppTextStyles.latin(size: 13.5, weight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

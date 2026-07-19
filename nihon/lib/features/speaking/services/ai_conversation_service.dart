@@ -191,14 +191,16 @@ class AiConversationService {
       } catch (e) {
         lastErr = e;
         if (!_isTransient(e) || i == attempts - 1) break;
-        // Đợi tăng dần rồi thử lại: 1s, 2s.
-        await Future<void>.delayed(Duration(seconds: i + 1));
+        // Đợi tăng dần rồi thử lại: 2s, 4s (429 rate-limit tính theo PHÚT nên
+        // đợi ngắn quá thử lại vẫn dính).
+        await Future<void>.delayed(Duration(seconds: (i + 1) * 2));
       }
     }
     if (_isTransient(lastErr!)) {
       throw AiServiceException(
-        'Gemini đang quá tải (thường do dùng bản miễn phí lúc cao điểm). '
-        'Hãy thử lại sau vài giây.',
+        'AI đang bận: quá tải tạm thời hoặc chạm GIỚI HẠN SỐ LƯỢT GỌI MỖI PHÚT '
+        'của Google (không phải hết tiền — billing vẫn ổn). '
+        'Đợi khoảng 30 giây rồi thử lại nhé.',
       );
     }
     debugPrint('AI raw error: $lastErr');
@@ -222,13 +224,6 @@ class AiConversationService {
         'để kiểm tra, hoặc cài App Check vào app.',
       );
     }
-    // Hết hạn mức (quota) — thường gặp ở free tier khi dùng nhiều trong ngày.
-    if (s.contains('quota') || s.contains('resource_exhausted') || s.contains('429')) {
-      throw AiServiceException(
-        'Đã chạm hạn mức gọi Gemini (quota). Chờ một lúc rồi thử lại, '
-        'hoặc kiểm tra hạn mức/billing của project.',
-      );
-    }
     throw AiServiceException('Lỗi gọi Gemini (Firebase): $lastErr');
   }
 
@@ -239,7 +234,14 @@ class AiConversationService {
         s.contains('overload') ||
         s.contains('high demand') ||
         s.contains('unavailable') ||
-        s.contains('internal');
+        s.contains('internal') ||
+        // 429 rate-limit theo PHÚT (số request/phút) — KHÔNG phải hết tiền;
+        // retry với backoff là qua.
+        s.contains('429') ||
+        s.contains('quota') ||
+        s.contains('resource_exhausted') ||
+        s.contains('resource exhausted') ||
+        s.contains('too many requests');
   }
 
   String _systemPrompt(Scenario s) {
