@@ -4,8 +4,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/guest_lock_dialog.dart';
 import '../lessons/kanji_data.dart';
 import '../lessons/kanji_writing_canvas.dart';
 import 'kana_data.dart';
@@ -39,6 +41,9 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
 
   // ── Chế độ luyện ─────────────────────────────────────────
   bool _writeMode = false; // false = gõ romaji, true = viết chữ
+
+  /// Chế độ VIẾT chữ chỉ dành cho tài khoản đã đăng nhập (Khách bị khóa).
+  bool get _isGuest => RoleService().currentRole.value == AppRole.guest;
 
   // ── Trạng thái câu hỏi VIẾT chữ ──────────────────────────
   List<KanjiStroke> _strokes = [];
@@ -290,7 +295,20 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
             child: Row(
               children: [
                 Expanded(child: _modeTab('⌨️ Gõ romaji', !_writeMode, () => setState(() => _writeMode = false))),
-                Expanded(child: _modeTab('✍️ Viết chữ', _writeMode, () => setState(() => _writeMode = true))),
+                Expanded(
+                  child: _modeTab(
+                    _isGuest ? '✍️ Viết chữ 🔒' : '✍️ Viết chữ',
+                    _writeMode,
+                    () {
+                      // Khách: khóa chế độ viết → mời đăng nhập.
+                      if (_isGuest) {
+                        showGuestLockDialog(context);
+                        return;
+                      }
+                      setState(() => _writeMode = true);
+                    },
+                  ),
+                ),
               ],
             ),
           ),
