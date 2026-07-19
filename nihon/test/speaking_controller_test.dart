@@ -155,19 +155,20 @@ void main() {
       c.dispose();
     });
 
-    test('chế độ thi vẫn giữ draft xem lại trước khi gửi', () async {
+    test('chế độ thi cũng tự gửi khi dừng mic (voice-only)', () async {
       final speech = FakeSpeech();
       final c = SpeakingController(
           ai: FakeAi(), speech: speech, initialScenario: _examScenario);
       await c.selectScenario(_examScenario);
-      expect(c.voiceOnly, false);
+      expect(c.voiceOnly, true);
 
       await c.toggleMic();
       speech.emitResult('たなかさんは　がくせいです。');
-      await c.toggleMic(); // dừng → vào draft, CHƯA gửi
+      await c.toggleMic(); // dừng → tự gửi lượt đọc bài
 
-      expect(c.draft, 'たなかさんは　がくせいです。');
-      expect(c.messages.length, 1); // mới chỉ có lời chào giám khảo
+      expect(c.draft, isNull);
+      expect(c.messages.length, 3); // chào + bài đọc + phản hồi giám khảo
+      expect(c.examProgress, 'Câu 1/4'); // đã qua lượt đọc bài
       c.dispose();
     });
   });

@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/config/api_config.dart';
 import '../../core/services/data_repository.dart';
 import '../../core/services/role_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -13,7 +14,6 @@ import '../auth/auth_screen.dart';
 import 'kanji_data.dart';
 import 'kanji_svg_parser.dart';
 import 'kanji_writing_canvas.dart';
-import '../../core/services/speech_assessment_service.dart';
 import '../../core/widgets/ai_tutor_bottom_sheet.dart';
 
 class KanjiStudyScreen extends StatefulWidget {
@@ -44,14 +44,11 @@ class _KanjiStudyScreenState extends State<KanjiStudyScreen> {
   String? _mnemonicStory;
   bool _isLoadingMnemonic = false;
   String? _mnemonicError;
-  final TextEditingController _apiKeyController = TextEditingController();
 
-  Future<void> _generateMnemonic() async {
-    final char = widget.kanji.character;
-    final apiKey = SpeechAssessmentService().apiKey;
-
-    // Check local fallback first
-    final localMnemonics = {
+  /// Mẹo viết sẵn cho các Kanji quen thuộc — hiện NGAY không cần mạng.
+  /// Bấm 🔄 sẽ nhờ Gemini (qua Firebase AI Logic, không cần API key) sáng tác
+  /// câu chuyện mới.
+  static const Map<String, String> _localMnemonics = {
       '一': 'Hình ảnh một ngón tay chỉ ngang biểu thị số một.',
       '二': 'Hai ngạch ngang song song chồng lên nhau biểu thị số hai.',
       '三': 'Ba nét ngang xếp chồng đại diện cho số ba.',
@@ -72,21 +69,18 @@ class _KanjiStudyScreenState extends State<KanjiStudyScreen> {
       '先': 'Người đi TRƯỚC (TIÊN) là người có đôi chân chạy nhanh, phía trên là hình đất cát bụi tung bay. 🏃\u200d♂️',
       '生': 'Hình ảnh một mầm cây nhỏ vừa nhú lên và SINH trưởng mạnh mẽ từ mặt đất. 🌱',
       '何': 'Một NGƯỜI (NHÂN đứng - 亻) đang vác trên vai một vật có hình dáng giống miệng (KHẨU) hỏi: "Cái GÌ thế này?". ❓',
-    };
+  };
 
-    if (localMnemonics.containsKey(char) && (apiKey == null || apiKey.trim().isEmpty)) {
+  /// Lần đầu mở tab: hiện mẹo viết sẵn nếu có (tức thì, không cần mạng);
+  /// không có thì nhờ AI sáng tác. Bấm 🔄 → luôn nhờ AI tạo câu chuyện MỚI.
+  Future<void> _generateMnemonic({bool forceAi = false}) async {
+    final char = widget.kanji.character;
+
+    if (!forceAi && _localMnemonics.containsKey(char)) {
       setState(() {
-        _mnemonicStory = localMnemonics[char];
+        _mnemonicStory = _localMnemonics[char];
         _isLoadingMnemonic = false;
         _mnemonicError = null;
-      });
-      return;
-    }
-
-    if (apiKey == null || apiKey.trim().isEmpty) {
-      setState(() {
-        _mnemonicStory = null;
-        _mnemonicError = 'Chưa cấu hình API Key. Bạn có thể sử dụng biểu tượng bộ não ở phần Ôn tập hoặc nhập khóa API ở ô dưới đây để mở khóa AI tự tạo mẹo nhớ chữ Hán độc đáo!';
       });
       return;
     }
@@ -96,11 +90,9 @@ class _KanjiStudyScreenState extends State<KanjiStudyScreen> {
       _mnemonicError = null;
     });
 
+    // Gọi Gemini qua Firebase AI Logic — KHÔNG cần API key trong app
+    // (giống phần Luyện nói: Firebase + App Check lo xác thực).
     try {
-      final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
-      );
-
       final prompt = '''
 Bạn là một giáo viên tiếng Nhật vui tính. Hãy tạo một câu chuyện liên tưởng ngắn, vui vẻ, hài hước và dễ nhớ để giúp người học ghi nhớ mặt chữ và cách viết của chữ Kanji sau:
 - Chữ Kanji: "$char"
@@ -114,34 +106,31 @@ Tối đa 4 câu ngắn gọn. Trình bày đẹp mắt với icon sinh động.
 Trả về nội dung văn bản trực tiếp, không chứa markdown hay định dạng ```.
 ''';
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ]
-        }),
-      ).timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        final String textContent = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
-        setState(() {
-          _mnemonicStory = textContent.trim();
-          _isLoadingMnemonic = false;
-        });
-      } else {
-        throw Exception('API Key invalid or rate limit exceeded');
+      final model = FirebaseAI.vertexAI().generativeModel(model: ApiConfig.model);
+      final response = await model
+          .generateContent([Content.text(prompt)])
+          .timeout(const Duration(seconds: 30));
+      final text = response.text?.trim();
+      if (text == null || text.isEmpty) {
+        throw Exception('Model không trả về nội dung');
       }
+      if (!mounted) return;
+      setState(() {
+        _mnemonicStory = text;
+        _isLoadingMnemonic = false;
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingMnemonic = false;
-        _mnemonicError = 'Lỗi kết nối AI: $e. Hãy kiểm tra lại API Key hoặc mạng internet!';
+        // Có mẹo viết sẵn thì rơi về nó thay vì báo lỗi.
+        if (_localMnemonics.containsKey(char)) {
+          _mnemonicStory = _localMnemonics[char];
+          _mnemonicError = null;
+        } else {
+          _mnemonicError =
+              'Chưa tạo được mẹo nhớ (AI đang bận hoặc mất mạng). Bấm 🔄 thử lại nhé!';
+        }
       });
     }
   }
@@ -224,7 +213,6 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
   @override
   void dispose() {
     _animationTimer?.cancel();
-    _apiKeyController.dispose();
     super.dispose();
   }
 
@@ -842,9 +830,6 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
   }
 
   Widget _buildMnemonicsTab() {
-    final apiKey = SpeechAssessmentService().apiKey;
-    final hasKey = apiKey != null && apiKey.trim().isNotEmpty;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -871,8 +856,8 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
               if (_mnemonicStory != null && !_isLoadingMnemonic)
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded, color: AppColors.kanji, size: 20),
-                  tooltip: 'Tạo lại câu chuyện',
-                  onPressed: _generateMnemonic,
+                  tooltip: 'Nhờ AI sáng tác câu chuyện mới',
+                  onPressed: () => _generateMnemonic(forceAi: true),
                 ),
             ],
           ),
@@ -896,46 +881,21 @@ Trả về nội dung văn bản trực tiếp, không chứa markdown hay đị
               _mnemonicError!,
               style: AppTextStyles.latin(size: 13, color: AppColors.textSecondary, height: 1.4),
             ),
-            const SizedBox(height: 16),
-            if (!hasKey) ...[
-              Text(
-                'Cấu hình Gemini API Key tại đây:',
-                style: AppTextStyles.latin(size: 12, weight: FontWeight.bold, color: AppColors.textPrimary),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.kanji,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(42),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _generateMnemonic(forceAi: true),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Thử lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _apiKeyController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        hintText: 'Nhập API Key của bạn...',
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.kanji,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                    onPressed: () async {
-                      final key = _apiKeyController.text.trim();
-                      await SpeechAssessmentService().setApiKey(key.isNotEmpty ? key : null);
-                      _generateMnemonic();
-                    },
-                    child: const Text('Kích hoạt', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ] else if (_mnemonicStory != null)
             Container(
               padding: const EdgeInsets.all(16),

@@ -12,6 +12,7 @@ import '../admin/speaking/models/admin_models.dart';
 import '../admin/speaking/student_draw_screen.dart';
 import 'models/nihon1_exam_sets.dart';
 import 'models/nihon2_exam_sets.dart';
+import 'speaking_history_screen.dart';
 import 'speaking_screen.dart';
 
 /// Màn CHỌN TRÌNH ĐỘ trước khi vào hội thoại.
@@ -352,6 +353,19 @@ class LevelSelectScreen extends StatelessWidget {
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
         title: Text('Luyện nói với AI', style: AppTextStyles.screenTitle),
+        actions: [
+          // Lịch sử các buổi luyện đã lưu (điểm + phân tích + transcript).
+          IconButton(
+            tooltip: 'Lịch sử luyện nói',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => _isGuest
+                ? showGuestLockDialog(context)
+                : Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SpeakingHistoryScreen(),
+                  )),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SafeArea(
         child: ValueListenableBuilder<AppRole>(

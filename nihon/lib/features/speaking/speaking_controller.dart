@@ -4,6 +4,7 @@ import 'models/chat_message.dart';
 import 'models/scenario.dart';
 import 'services/ai_conversation_service.dart';
 import 'services/reading_match.dart';
+import 'services/speaking_history_service.dart';
 import 'services/speech_service.dart';
 
 /// Trạng thái + logic cho màn luyện nói (chế độ AI 会話).
@@ -143,10 +144,11 @@ class SpeakingController extends ChangeNotifier {
   bool get analyzing => _analyzing;
   SessionAnalysis? get analysis => _analysis;
 
-  /// Chế độ HỘI THOẠI thuần giọng nói (Tự do / JPD316): không hiện text khi
-  /// đang luyện — dừng mic là GỬI luôn, kết thúc buổi mới hiện phân tích.
-  /// Thi Nhật 1/Nhật 2 giữ luồng cũ (xem lại bản nháp trước khi gửi).
-  bool get voiceOnly => !_scenario.examDrill;
+  /// Thuần giọng nói cho MỌI chế độ (Tự do / JPD316 / thi Nhật 1 / Nhật 2):
+  /// không hiện text khi đang luyện — dừng mic là GỬI luôn, như thi nói thật.
+  /// Bản nháp (draft) chỉ còn xuất hiện khi lượt gửi bị lỗi mạng, để bấm gửi
+  /// lại mà không phải nói lại từ đầu.
+  bool get voiceOnly => true;
 
   /// Điểm từng lượt nói của SV theo thứ tự (thi Nhật 1: [0]=đọc bài,
   /// [1..3]=câu theo tranh, [4]=câu tự do) — null nếu lượt đó AI không chấm.
@@ -424,6 +426,16 @@ class SpeakingController extends ChangeNotifier {
         );
       }
       _replacePendingWithAi(turn);
+      // Buổi THI vừa hoàn thành → lưu vào lịch sử (kèm điểm từng lượt).
+      if (_scenario.examDrill && _examFinished) {
+        SpeakingHistoryService.saveSession(
+          mode: _historyMode,
+          title: _scenario.viLabel,
+          transcript: List.of(messages),
+          score: _examTotalScore(),
+          examScores: examTurnScores,
+        );
+      }
     } catch (e) {
       _failPending(e.toString());
       // Gỡ luôn bong bóng user của lượt lỗi: bảng điểm thi Nhật 1 map điểm
@@ -451,8 +463,17 @@ class SpeakingController extends ChangeNotifier {
 
     try {
       final result = await _ai.analyzeConversation(_formatTranscript());
+      if (_disposed) return; // đã thoát màn trong lúc chờ phân tích
       _analysis = result;
       _sessionEnded = true;
+      // Lưu buổi luyện + phân tích vào lịch sử.
+      SpeakingHistoryService.saveSession(
+        mode: _historyMode,
+        title: _scenario.viLabel,
+        transcript: List.of(messages),
+        score: result.overallScore,
+        analysis: result,
+      );
       // Đọc to câu tạm biệt để buổi "gọi điện" kết thúc tự nhiên.
       _speech.speak(result.farewellJp);
     } catch (e) {
@@ -461,6 +482,40 @@ class SpeakingController extends ChangeNotifier {
     _busy = false;
     _analyzing = false;
     notifyListeners();
+  }
+
+  /// Mã chế độ lưu vào lịch sử buổi luyện.
+  String get _historyMode {
+    switch (_scenario.drillType) {
+      case ExamDrillType.nihon1:
+        return 'nihon1';
+      case ExamDrillType.nihon2:
+        return 'nihon2';
+      case ExamDrillType.none:
+        return _scenario.id.startsWith('exam_') ? 'jpd316' : 'free';
+    }
+  }
+
+  /// Tổng điểm thi /100 — cùng công thức với ExamResultCard (đọc + câu hỏi
+  /// 15đ/câu + tác phong 10đ từ trung bình các lượt).
+  int _examTotalScore() {
+    final isN2 = _scenario.drillType == ExamDrillType.nihon2;
+    final readingMax = isN2 ? 45 : 30;
+    final questionCount = isN2 ? 3 : 4;
+    final scores = examTurnScores;
+    int? at(int i) => i < scores.length ? scores[i] : null;
+    final graded = [
+      for (var i = 0; i <= questionCount; i++) at(i),
+    ].whereType<int>().toList();
+    final avg = graded.isEmpty
+        ? 0.0
+        : graded.reduce((a, b) => a + b) / graded.length;
+    var total = ((at(0) ?? 0) * readingMax / 100).round();
+    for (var i = 1; i <= questionCount; i++) {
+      total += ((at(i) ?? 0) * 15 / 100).round();
+    }
+    total += (avg * 10 / 100).round();
+    return total;
   }
 
   /// Định dạng hội thoại thành văn bản cho lượt phân tích cuối buổi.
@@ -526,6 +581,9 @@ class SpeakingController extends ChangeNotifier {
   }
 
   void _replacePendingWithAi(AiTurn turn) {
+    // Người dùng đã thoát màn trong lúc AI đang nghĩ → KHÔNG đọc to câu trả
+    // lời nữa (bug: thoát ra vẫn nghe tiếng AI).
+    if (_disposed) return;
     final i = messages.lastIndexWhere((m) => m.isPending);
     if (i == -1) return;
     messages[i] = ChatMessage(
@@ -549,6 +607,14 @@ class SpeakingController extends ChangeNotifier {
   void _removeLastUserMessage() {
     final i = messages.lastIndexWhere((m) => m.fromUser);
     if (i != -1) messages.removeAt(i);
+  }
+
+  /// Các lời gọi AI/STT là async — có thể hoàn thành SAU khi màn đã đóng.
+  /// Notify lúc đó vừa vô nghĩa vừa ném assert của ChangeNotifier.
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
   }
 
   @override

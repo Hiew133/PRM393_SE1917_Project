@@ -55,34 +55,6 @@ class DashboardScreen extends StatelessWidget {
       children: [
         const _UserHeader(),
         const SizedBox(height: 18),
-        ValueListenableBuilder<AppRole>(
-          valueListenable: RoleService().currentRole,
-          builder: (context, role, _) {
-            final isGuest = role == AppRole.guest;
-            return _GameBanner(
-              locked: isGuest,
-              onPlay: () {
-                // Khách chỉ được xem — muốn chơi phải đăng nhập.
-                if (isGuest) {
-                  showGuestLockDialog(context);
-                  return;
-                }
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
-                );
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _KanaBanner(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const KanaQuizScreen()),
-            );
-          },
-        ),
-        const SizedBox(height: 20),
         Text('Các kỹ năng', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 12),
         // Lưới 2 cột cho 4 kỹ năng đầu + 1 hàng full-width cho kỹ năng cuối.
@@ -110,6 +82,37 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 10),
         // Luyện nói với AI — chỗ vào phần Nói (giữ DUY NHẤT một lối vào ở đây).
         _SpeakingButton(onTap: openSpeaking),
+        // Khu trò chơi — nằm DƯỚI phần Luyện nói.
+        const SizedBox(height: 20),
+        Text('Trò chơi', style: AppTextStyles.sectionLabel),
+        const SizedBox(height: 12),
+        ValueListenableBuilder<AppRole>(
+          valueListenable: RoleService().currentRole,
+          builder: (context, role, _) {
+            final isGuest = role == AppRole.guest;
+            return _GameBanner(
+              locked: isGuest,
+              onPlay: () {
+                // Khách chỉ được xem — muốn chơi phải đăng nhập.
+                if (isGuest) {
+                  showGuestLockDialog(context);
+                  return;
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FootballQuizScreen()),
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _KanaBanner(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const KanaQuizScreen()),
+            );
+          },
+        ),
       ],
     );
   }
