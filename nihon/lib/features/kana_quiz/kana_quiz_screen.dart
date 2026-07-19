@@ -46,6 +46,10 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
   List<List<Offset>> _userPaths = [];
   bool _strokesLoading = false;
 
+  /// Hiện chữ mẫu mờ + số nét + mũi tên? Tắt = viết bằng trí nhớ.
+  /// Giữ nguyên lựa chọn qua các câu (không reset mỗi chữ).
+  bool _showGuides = true;
+
   // ── Trạng thái quiz ──────────────────────────────────────
   final List<Kana> _queue = [];
   int _poolSize = 0;
@@ -638,27 +642,85 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
                       activeStrokeIndex: _strokeIndex,
                       completedUserPaths: _userPaths,
                       onStrokeCompleted: _onStrokeCompleted,
+                      showGuides: _showGuides,
                     ),
         ),
         const SizedBox(height: 10),
-        // Tiến độ nét + phản hồi.
-        SizedBox(
-          height: 24,
-          child: correct
-              ? Text('✓ Chính xác! Đó là 「${_current?.char ?? ''}」',
-                  style: AppTextStyles.latin(
-                      size: 15, weight: FontWeight.w800, color: AppColors.speaking))
-              : wrong
-                  ? Text('Chữ đúng là 「$_wrongAnswer」— sẽ hỏi lại sau!',
+        // Tiến độ nét + nút bật/tắt gợi ý.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 24,
+              child: correct
+                  ? Text('✓ Chính xác! Đó là 「${_current?.char ?? ''}」',
                       style: AppTextStyles.latin(
-                          size: 14, weight: FontWeight.w800, color: AppColors.vocab))
-                  : _strokes.isEmpty
-                      ? const SizedBox.shrink()
-                      : Text('Nét ${(_strokeIndex + 1).clamp(1, _strokes.length)}/${_strokes.length}',
+                          size: 15,
+                          weight: FontWeight.w800,
+                          color: AppColors.speaking))
+                  : wrong
+                      ? Text('Chữ đúng là 「$_wrongAnswer」— sẽ hỏi lại sau!',
                           style: AppTextStyles.latin(
-                              size: 13,
-                              weight: FontWeight.w700,
-                              color: AppColors.textMuted)),
+                              size: 14,
+                              weight: FontWeight.w800,
+                              color: AppColors.vocab))
+                      : _strokes.isEmpty
+                          ? const SizedBox.shrink()
+                          : Text(
+                              'Nét ${(_strokeIndex + 1).clamp(1, _strokes.length)}/${_strokes.length}',
+                              style: AppTextStyles.latin(
+                                  size: 13,
+                                  weight: FontWeight.w700,
+                                  color: AppColors.textMuted)),
+            ),
+            if (_feedback == _Feedback.none) ...[
+              const SizedBox(width: 12),
+              // Tắt gợi ý → viết bằng trí nhớ (khó hơn, nhớ lâu hơn).
+              GestureDetector(
+                onTap: () => setState(() => _showGuides = !_showGuides),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _showGuides
+                        ? AppColors.surfaceAlt
+                        : AppColors.brand.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: _showGuides
+                            ? AppColors.border
+                            : AppColors.brand,
+                        width: 1.2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _showGuides
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        size: 14,
+                        color: _showGuides
+                            ? AppColors.textMuted
+                            : AppColors.brandDark,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _showGuides ? 'Gợi ý: Bật' : 'Gợi ý: Tắt',
+                        style: AppTextStyles.latin(
+                          size: 11.5,
+                          weight: FontWeight.w800,
+                          color: _showGuides
+                              ? AppColors.textMuted
+                              : AppColors.brandDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 10),
         Row(

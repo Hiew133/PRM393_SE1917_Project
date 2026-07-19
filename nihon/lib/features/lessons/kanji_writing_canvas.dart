@@ -17,6 +17,10 @@ class KanjiWritingCanvas extends StatefulWidget {
   final VoidCallback? onClear;
   final VoidCallback? onUndo;
 
+  /// false = ẨN chữ mẫu mờ + số nét + mũi tên hướng dẫn (chế độ luyện trí
+  /// nhớ — viết "chay" không nhìn mẫu). Cách chấm nét không đổi.
+  final bool showGuides;
+
   const KanjiWritingCanvas({
     super.key,
     required this.character,
@@ -27,6 +31,7 @@ class KanjiWritingCanvas extends StatefulWidget {
     this.isAnimating = false,
     this.onClear,
     this.onUndo,
+    this.showGuides = true,
   });
 
   @override
@@ -232,6 +237,7 @@ class _KanjiWritingCanvasState extends State<KanjiWritingCanvas> {
                     completedUserPaths: widget.completedUserPaths,
                     activeUserPath: _activeUserPath,
                     isAnimating: widget.isAnimating,
+                    showGuides: widget.showGuides,
                   ),
                 ),
               ),
@@ -250,6 +256,7 @@ class _KanjiPainter extends CustomPainter {
   final List<List<Offset>> completedUserPaths;
   final List<Offset> activeUserPath;
   final bool isAnimating;
+  final bool showGuides;
 
   _KanjiPainter({
     required this.character,
@@ -258,15 +265,16 @@ class _KanjiPainter extends CustomPainter {
     required this.completedUserPaths,
     required this.activeUserPath,
     required this.isAnimating,
+    this.showGuides = true,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     _drawGrid(canvas, size);
-    _drawKanjiTemplate(canvas, size);
+    if (showGuides) _drawKanjiTemplate(canvas, size);
     _drawCompletedStrokes(canvas, size);
     _drawActiveUserPath(canvas);
-    _drawGuides(canvas, size);
+    if (showGuides) _drawGuides(canvas, size);
   }
 
   // 1. Vẽ ô lưới nền ô vuông đứt nét
@@ -463,6 +471,7 @@ class _KanjiPainter extends CustomPainter {
     return oldDelegate.activeStrokeIndex != activeStrokeIndex ||
         oldDelegate.completedUserPaths.length != completedUserPaths.length ||
         oldDelegate.activeUserPath.length != activeUserPath.length ||
-        oldDelegate.isAnimating != isAnimating;
+        oldDelegate.isAnimating != isAnimating ||
+        oldDelegate.showGuides != showGuides;
   }
 }
