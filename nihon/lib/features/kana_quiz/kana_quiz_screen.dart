@@ -6,10 +6,17 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../lessons/kanji_data.dart';
+import '../lessons/kanji_writing_canvas.dart';
 import 'kana_data.dart';
+import 'kana_stroke_loader.dart';
 
 /// Quiz ôn bảng chữ cái Kana kiểu Tofugu: chọn hàng trong bảng Hiragana /
-/// Katakana rồi GÕ ROMAJI cho từng chữ; sai thì lặp lại đến khi thuộc.
+/// Katakana rồi luyện từng chữ theo 1 trong 2 chế độ:
+/// - GÕ ROMAJI: hiện chữ kana → gõ cách đọc (như cũ).
+/// - VIẾT CHỮ: hiện romaji → VIẾT chữ kana lên canvas, chấm từng nét
+///   (tái dùng canvas luyện viết Kanji; nét mẫu từ KanjiVG bundle sẵn).
+/// Sai thì lặp lại đến khi thuộc.
 class KanaQuizScreen extends StatefulWidget {
   const KanaQuizScreen({super.key});
 
@@ -29,6 +36,15 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
   bool _showKatakana = false; // false = Hiragana, true = Katakana
   final Set<int> _selHira = {};
   final Set<int> _selKata = {};
+
+  // ── Chế độ luyện ─────────────────────────────────────────
+  bool _writeMode = false; // false = gõ romaji, true = viết chữ
+
+  // ── Trạng thái câu hỏi VIẾT chữ ──────────────────────────
+  List<KanjiStroke> _strokes = [];
+  int _strokeIndex = 0;
+  List<List<Offset>> _userPaths = [];
+  bool _strokesLoading = false;
 
   // ── Trạng thái quiz ──────────────────────────────────────
   final List<Kana> _queue = [];
@@ -111,7 +127,72 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
       _input.clear();
       _phase = _Phase.quiz;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    if (_writeMode) {
+      _prepareWriteQuestion();
+    } else {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _focus.requestFocus());
+    }
+  }
+
+  /// Tải nét mẫu cho chữ đang hỏi (chế độ VIẾT) và reset trạng thái canvas.
+  Future<void> _prepareWriteQuestion() async {
+    final kana = _current;
+    if (kana == null) return;
+    setState(() {
+      _strokesLoading = true;
+      _strokes = [];
+      _strokeIndex = 0;
+      _userPaths = [];
+    });
+    final strokes = await KanaStrokeLoader.load(kana.char);
+    if (!mounted || _current != kana) return;
+    setState(() {
+      _strokes = strokes;
+      _strokesLoading = false;
+    });
+  }
+
+  /// Một nét vừa được viết ĐÚNG trên canvas.
+  void _onStrokeCompleted(int index, List<Offset> path) {
+    if (_feedback != _Feedback.none) return;
+    setState(() {
+      _userPaths = [..._userPaths, path];
+      _strokeIndex = index + 1;
+    });
+    // Viết xong nét cuối → chữ hoàn thành, tính là ĐÚNG.
+    if (_strokeIndex >= _strokes.length) {
+      setState(() {
+        _answered++;
+        _correct++;
+        _feedback = _Feedback.correct;
+        _queue.removeAt(0);
+      });
+      _advanceTimer?.cancel();
+      _advanceTimer = Timer(const Duration(milliseconds: 900), _nextQuestion);
+    }
+  }
+
+  /// Viết lại chữ hiện tại từ nét đầu.
+  void _resetWriting() {
+    if (_feedback != _Feedback.none) return;
+    setState(() {
+      _strokeIndex = 0;
+      _userPaths = [];
+    });
+  }
+
+  /// Bỏ qua chữ đang viết: tính là SAI, đẩy xuống cuối hàng đợi hỏi lại.
+  void _skipWrite() {
+    if (_feedback != _Feedback.none || _current == null) return;
+    setState(() {
+      _answered++;
+      _feedback = _Feedback.wrong;
+      _wrongAnswer = _current!.char;
+      _queue.add(_queue.removeAt(0));
+    });
+    _advanceTimer?.cancel();
+    _advanceTimer = Timer(const Duration(milliseconds: 1200), _nextQuestion);
   }
 
   void _submit() {
@@ -152,7 +233,10 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
         _current = _queue.first;
       }
     });
-    if (_phase == _Phase.quiz) {
+    if (_phase != _Phase.quiz) return;
+    if (_writeMode) {
+      _prepareWriteQuestion();
+    } else {
       _focus.requestFocus();
     }
   }
@@ -187,6 +271,24 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
               Text('Học bảng chữ cái Kana',
                   style: AppTextStyles.latin(size: 19, weight: FontWeight.w800, color: AppColors.textPrimary)),
             ],
+          ),
+        ),
+        // Chọn chế độ luyện: gõ romaji (nhìn chữ → gõ) / viết chữ (nhìn romaji → viết)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _modeTab('⌨️ Gõ romaji', !_writeMode, () => setState(() => _writeMode = false))),
+                Expanded(child: _modeTab('✍️ Viết chữ', _writeMode, () => setState(() => _writeMode = true))),
+              ],
+            ),
           ),
         ),
         // Chuyển bảng Hiragana / Katakana
@@ -224,6 +326,29 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
         ),
         _startBar(),
       ],
+    );
+  }
+
+  Widget _modeTab(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: active ? AppColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: active ? Border.all(color: AppColors.brand, width: 1.5) : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: AppTextStyles.latin(
+            size: 13.5,
+            weight: FontWeight.w800,
+            color: active ? AppColors.brandDark : AppColors.textMuted,
+          ),
+        ),
+      ),
     );
   }
 
@@ -375,7 +500,9 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
+                child: _writeMode
+                    ? _writeQuestionBody(cardColor, cardBorder)
+                    : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
@@ -441,6 +568,141 @@ class _KanaQuizScreenState extends State<KanaQuizScreen> {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  /// Chữ đang hỏi thuộc bảng Katakana? (pool có thể trộn cả 2 bảng)
+  bool get _currentIsKatakana {
+    final c = _current?.char;
+    if (c == null || c.isEmpty) return false;
+    final cp = c.runes.first;
+    return cp >= 0x30A0 && cp <= 0x30FF;
+  }
+
+  // ── Câu hỏi chế độ VIẾT: romaji → viết chữ lên canvas ────
+  Widget _writeQuestionBody(Color cardColor, Color cardBorder) {
+    final correct = _feedback == _Feedback.correct;
+    final wrong = _feedback == _Feedback.wrong;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Đề bài: romaji + bảng cần viết.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: cardBorder, width: 2),
+          ),
+          child: Column(
+            children: [
+              Text(
+                _current?.romaji ?? '',
+                style: AppTextStyles.latin(
+                    size: 44, weight: FontWeight.w900, color: AppColors.textPrimary),
+              ),
+              Text(
+                'Viết chữ ${_currentIsKatakana ? 'Katakana' : 'Hiragana'}',
+                style: AppTextStyles.latin(
+                    size: 12, weight: FontWeight.w700, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        // Canvas viết chữ — chấm từng nét như luyện viết Kanji.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 300),
+          child: _strokesLoading
+              ? const AspectRatio(
+                  aspectRatio: 1,
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.brand)),
+                )
+              : _strokes.isEmpty
+                  ? AspectRatio(
+                      aspectRatio: 1,
+                      child: Center(
+                        child: Text('Không tải được nét chữ mẫu.',
+                            style: AppTextStyles.latin(
+                                size: 13, color: AppColors.textMuted)),
+                      ),
+                    )
+                  : KanjiWritingCanvas(
+                      character: _current?.char ?? '',
+                      strokes: _strokes,
+                      activeStrokeIndex: _strokeIndex,
+                      completedUserPaths: _userPaths,
+                      onStrokeCompleted: _onStrokeCompleted,
+                    ),
+        ),
+        const SizedBox(height: 10),
+        // Tiến độ nét + phản hồi.
+        SizedBox(
+          height: 24,
+          child: correct
+              ? Text('✓ Chính xác! Đó là 「${_current?.char ?? ''}」',
+                  style: AppTextStyles.latin(
+                      size: 15, weight: FontWeight.w800, color: AppColors.speaking))
+              : wrong
+                  ? Text('Chữ đúng là 「$_wrongAnswer」— sẽ hỏi lại sau!',
+                      style: AppTextStyles.latin(
+                          size: 14, weight: FontWeight.w800, color: AppColors.vocab))
+                  : _strokes.isEmpty
+                      ? const SizedBox.shrink()
+                      : Text('Nét ${(_strokeIndex + 1).clamp(1, _strokes.length)}/${_strokes.length}',
+                          style: AppTextStyles.latin(
+                              size: 13,
+                              weight: FontWeight.w700,
+                              color: AppColors.textMuted)),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _feedback == _Feedback.none && _userPaths.isNotEmpty
+                    ? _resetWriting
+                    : null,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  side: const BorderSide(color: AppColors.border, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.refresh_rounded,
+                    size: 18, color: AppColors.textSecondary),
+                label: Text('Viết lại',
+                    style: AppTextStyles.latin(
+                        size: 14,
+                        weight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _feedback == _Feedback.none ? _skipWrite : null,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  side: const BorderSide(color: AppColors.border, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.skip_next_rounded,
+                    size: 18, color: AppColors.textSecondary),
+                label: Text('Chưa nhớ',
+                    style: AppTextStyles.latin(
+                        size: 14,
+                        weight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+              ),
+            ),
+          ],
         ),
       ],
     );

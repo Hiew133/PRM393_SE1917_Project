@@ -87,6 +87,8 @@ flutter:
   assets:
     - assets/audio/
     - assets/images/football/
+    # Nét chữ kana (KanjiVG, tên file = codepoint hex) cho chế độ VIẾT chữ cái
+    - assets/kana_svg/
 
   # Font bundle (variable fonts – 1 file/họ, tự map theo fontWeight/fontVariations).
   fonts:
