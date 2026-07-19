@@ -9,6 +9,7 @@ import 'speaking_controller.dart';
 import 'widgets/ai_character.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/exam_cards.dart';
+import 'widgets/session_analysis_view.dart';
 import 'widgets/speaking_bars.dart';
 import 'widgets/voice_input_bar.dart';
 
@@ -145,6 +146,9 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                     // finishing: đang chốt câu (~400ms) — khóa nút như lúc bận
                     // để bấm nhanh không mở phiên mới đè lên phiên đang đóng.
                     busy: _controller.busy || _controller.finishing,
+                    // Hội thoại (Tự do / JPD316): thuần giọng nói — không hiện
+                    // text đang nhận diện, dừng mic là gửi luôn.
+                    voiceMode: _controller.voiceOnly,
                     partialText: _controller.partialText,
                     draftText: _controller.draft,
                     onMicTap: _controller.toggleMic,
@@ -271,6 +275,9 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   /// Trạng thái hiện tại của nhân vật → (chữ, màu) cho pill dưới nhân vật.
   ({String text, Color color}) _statusInfo() {
     final c = _controller;
+    if (c.analyzing) {
+      return (text: 'Đang phân tích buổi hội thoại… 📊', color: AppColors.srsMaster);
+    }
     if (c.listening) {
       return (text: 'Đang nghe bạn nói… 🎤', color: AppColors.vocab);
     }
@@ -310,7 +317,16 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   /// VÙNG GIỮA: thẻ bài đọc/tranh (nếu có) + nhân vật「さくら先生」. Cuộn được
   /// khi màn hẹp nên nhân vật LUÔN hiện đủ (không bị co mất) và không bao giờ
   /// tràn. Màn rộng thì căn giữa như sân khấu.
+  /// Sau khi bấm "Kết thúc" (hội thoại): thay bằng màn PHÂN TÍCH & GÓP Ý.
   Widget _stage() {
+    final analysis = _controller.analysis;
+    if (analysis != null) {
+      return SessionAnalysisView(
+        analysis: analysis,
+        messages: _controller.messages,
+        onListen: _controller.speak,
+      );
+    }
     return LayoutBuilder(builder: (context, box) {
       final hasCard = _showReadingCard || _showPictureCard;
       // Nhân vật: to khi chat tự do, nhỏ gọn nhưng vẫn rõ khi có thẻ bài đọc/
@@ -404,9 +420,44 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        _scriptButton(),
+        // Hội thoại thuần giọng nói: KHÔNG hiện script khi đang luyện — chỉ có
+        // nút nghe lại câu AI vừa nói (như hỏi lại trong cuộc gọi). Phân tích
+        // & bản ghi hội thoại hiện khi bấm "Kết thúc". Chế độ thi giữ nút script.
+        if (_controller.voiceOnly) _replayButton() else _scriptButton(),
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  /// Nút "Nghe lại" — đọc lại câu gần nhất của AI bằng TTS (chế độ hội thoại).
+  Widget _replayButton() {
+    final aiMessages = _controller.messages
+        .where((m) => !m.fromUser && !m.isPending && m.japanese.isNotEmpty);
+    if (aiMessages.isEmpty) return const SizedBox.shrink();
+    final lastAi = aiMessages.last;
+    return GestureDetector(
+      onTap: () => _controller.speak(lastAi.japanese),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.replay_rounded,
+                size: 17, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Text('Nghe lại câu vừa rồi',
+                style: AppTextStyles.latin(
+                    size: 13,
+                    weight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 

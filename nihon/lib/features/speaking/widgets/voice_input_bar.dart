@@ -9,9 +9,14 @@ import '../../../core/theme/app_text_styles.dart';
 /// 3. **Xem lại (draft)**: sau khi bấm dừng, câu KHÔNG gửi ngay — hiện lại cho
 ///    người dùng đọc (KHÔNG sửa tay được): sai thì 🗑 xóa nói lại, thiếu thì
 ///    🎙 nói thêm, ưng rồi bấm ➤ gửi.
+///
+/// [voiceMode] (hội thoại Tự do / JPD316): KHÔNG hiện chữ — chỉ có nút mic
+/// như một cuộc gọi thoại; bấm dừng là câu được gửi luôn. (Draft chỉ còn xuất
+/// hiện khi lượt gửi bị lỗi — để bấm ➤ gửi lại mà không phải nói lại.)
 class VoiceInputBar extends StatelessWidget {
   final bool listening;
   final bool busy;
+  final bool voiceMode;
   final String partialText;
   final String? draftText; // null = không ở chế độ xem lại
   final VoidCallback onMicTap;
@@ -23,6 +28,7 @@ class VoiceInputBar extends StatelessWidget {
     required this.listening,
     required this.busy,
     required this.onMicTap,
+    this.voiceMode = false,
     this.partialText = '',
     this.draftText,
     this.onSendDraft,
@@ -42,19 +48,38 @@ class VoiceInputBar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (_inDraft) _draftRow() else _listenRow(),
+          if (_inDraft)
+            _draftRow()
+          else if (voiceMode)
+            _voiceRow()
+          else
+            _listenRow(),
           const SizedBox(height: 8),
           Text(
             _inDraft
                 ? 'Sai thì 🗑 xóa nói lại · thiếu thì 🎙 nói thêm · ưng thì ➤ gửi'
-                : listening
-                    ? 'Ngừng một lúc cũng không sao — bấm dừng để xem lại trước khi gửi'
-                    : 'Trả lời bằng tiếng Nhật · +15 XP mỗi lượt hội thoại',
+                : voiceMode
+                    ? (listening
+                        ? 'Đang nghe… nói xong bấm nút đỏ để gửi'
+                        : 'Bấm mic và trả lời bằng tiếng Nhật — như một cuộc gọi')
+                    : listening
+                        ? 'Ngừng một lúc cũng không sao — bấm dừng để xem lại trước khi gửi'
+                        : 'Trả lời bằng tiếng Nhật · +15 XP mỗi lượt hội thoại',
             style: AppTextStyles.latin(size: 11, color: AppColors.textFaint),
             textAlign: TextAlign.center,
           ),
         ],
       ),
+    );
+  }
+
+  // ── Chế độ thuần giọng nói: chỉ một nút mic to ở giữa ──
+  Widget _voiceRow() {
+    return _RoundButton(
+      color: listening ? AppColors.vocab : AppColors.speaking,
+      icon: listening ? Icons.stop_rounded : Icons.mic,
+      size: 62,
+      onTap: busy ? null : onMicTap,
     );
   }
 

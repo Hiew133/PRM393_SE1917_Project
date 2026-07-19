@@ -105,9 +105,11 @@ class SpeakingController extends ChangeNotifier {
   String? _examPhase; // "reading" | "picture" | "free" | "done"
   bool _examFinished = false; // đã xong toàn bộ phần thi
 
-  // Chế độ Tự do / JPD316: người dùng chủ động kết thúc buổi luyện → AI tổng
-  // kết (feedback tiếng Việt) rồi khóa mic; "Luyện lại" mở phiên mới.
+  // Chế độ Tự do / JPD316: người dùng chủ động kết thúc buổi luyện → AI phân
+  // tích cả buổi hội thoại rồi khóa mic; "Luyện lại" mở phiên mới.
   bool _sessionEnded = false;
+  bool _analyzing = false; // đang chờ AI phân tích cuối buổi
+  SessionAnalysis? _analysis; // kết quả phân tích (null = chưa kết thúc)
 
   Scenario get scenario => _scenario;
   bool get busy => _busy;
@@ -138,6 +140,13 @@ class SpeakingController extends ChangeNotifier {
   String? get examPhase => _examPhase;
   bool get examFinished => _examFinished;
   bool get sessionEnded => _sessionEnded;
+  bool get analyzing => _analyzing;
+  SessionAnalysis? get analysis => _analysis;
+
+  /// Chế độ HỘI THOẠI thuần giọng nói (Tự do / JPD316): không hiện text khi
+  /// đang luyện — dừng mic là GỬI luôn, kết thúc buổi mới hiện phân tích.
+  /// Thi Nhật 1/Nhật 2 giữ luồng cũ (xem lại bản nháp trước khi gửi).
+  bool get voiceOnly => !_scenario.examDrill;
 
   /// Điểm từng lượt nói của SV theo thứ tự (thi Nhật 1: [0]=đọc bài,
   /// [1..3]=câu theo tranh, [4]=câu tự do) — null nếu lượt đó AI không chấm.
@@ -171,6 +180,8 @@ class SpeakingController extends ChangeNotifier {
     _draft = null;
     _answeredCount = 0;
     _sessionEnded = false;
+    _analyzing = false;
+    _analysis = null;
     _syncExamState();
     messages.add(ChatMessage.pendingAi());
     _busy = true;
@@ -334,27 +345,32 @@ class SpeakingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Bấm nút dừng: đóng mic, chờ STT nhả nốt kết quả cuối rồi đưa toàn bộ
-  /// vào [draft] để người dùng XEM LẠI (sửa/nói thêm/xóa) trước khi gửi.
+  /// Bấm nút dừng: đóng mic, chờ STT nhả nốt kết quả cuối.
+  /// - Chế độ hội thoại thuần giọng nói ([voiceOnly]): GỬI câu luôn cho AI.
+  /// - Chế độ thi: đưa vào [draft] để XEM LẠI (sửa/nói thêm/xóa) rồi mới gửi.
   Future<void> _finishListening() async {
     _listening = false; // chặn _onSttSessionDone tự mở lại phiên
     _finishing = true; // khóa nút mic trong lúc chờ gom kết quả cuối
     notifyListeners();
+    String text;
     try {
       await _speech.stopListening();
       // stop() xong plugin mới bắn kết quả cuối — đợi một nhịp để gom nốt.
       await Future<void>.delayed(const Duration(milliseconds: 400));
-      final text = partialText.trim();
+      text = partialText.trim();
       // Nhớ phần đuôi mới chỉ có bản partial: nếu bản CHỐT của nó về trễ hơn
       // 400ms, onResult sẽ thay đuôi này thay vì nối lặp.
       _draftPendingTail = _partial.trim();
       _transcript = '';
       _partial = '';
-      _draft = text.isEmpty ? null : text;
+      _draft = (voiceOnly || text.isEmpty) ? null : text;
     } finally {
       _finishing = false;
     }
     notifyListeners();
+    if (voiceOnly && text.isNotEmpty) {
+      await submitUserText(text);
+    }
   }
 
   /// Gửi bản nháp cho AI (bấm nút gửi). Nháp rỗng → chỉ đóng chế độ xem lại.
@@ -421,35 +437,40 @@ class SpeakingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Kết thúc buổi luyện (chế độ Tự do / JPD316): xin AI một lượt TỔNG KẾT
-  /// (nhận xét chung + điểm trung bình cả buổi) rồi khóa mic. Không dùng cho
-  /// thi Nhật 1 — chế độ đó tự kết thúc theo format.
+  /// Kết thúc buổi luyện (chế độ Tự do / JPD316): gửi TOÀN BỘ hội thoại cho
+  /// AI PHÂN TÍCH (điểm tổng, điểm mạnh, cần cải thiện, góp ý từng câu) rồi
+  /// khóa mic. Không dùng cho thi Nhật 1/2 — chế độ đó tự kết thúc theo format.
   Future<void> endSession() async {
     if (_busy || _listening || _sessionEnded || _scenario.examDrill) return;
     if (!hasUserTurn) return;
-    messages.add(ChatMessage(fromUser: true, japanese: '🏁 Kết thúc buổi luyện'));
-    messages.add(ChatMessage.pendingAi());
+    await _speech.stopSpeaking(); // ngắt TTS đang đọc dở
     _busy = true;
+    _analyzing = true;
+    _error = null;
     notifyListeners();
 
     try {
-      final turn = await _ai.sendUserUtterance(
-        '[HỆ THỐNG] Người học muốn KẾT THÚC buổi luyện. Lượt này:\n'
-        '- feedback (tiếng Việt, 2–4 câu): TỔNG KẾT cả buổi — điểm mạnh, 1–2 '
-        'điểm cần cải thiện, và ĐIỂM TRUNG BÌNH cả buổi /100 (dựa trên các '
-        'câu đã chấm).\n'
-        '- reply_jp: câu chào tạm biệt NGẮN, động viên (kèm reply_reading, '
-        'reply_translation như thường lệ).\n'
-        '- pronunciation_score: null (không chấm lượt này).',
-      );
+      final result = await _ai.analyzeConversation(_formatTranscript());
+      _analysis = result;
       _sessionEnded = true;
-      _replacePendingWithAi(turn);
+      // Đọc to câu tạm biệt để buổi "gọi điện" kết thúc tự nhiên.
+      _speech.speak(result.farewellJp);
     } catch (e) {
-      _failPending(e.toString());
-      _removeLastUserMessage(); // gỡ marker "🏁" — buổi luyện vẫn tiếp tục
+      _error = e.toString(); // buổi luyện vẫn tiếp tục, bấm Kết thúc thử lại
     }
     _busy = false;
+    _analyzing = false;
     notifyListeners();
+  }
+
+  /// Định dạng hội thoại thành văn bản cho lượt phân tích cuối buổi.
+  String _formatTranscript() {
+    final buf = StringBuffer();
+    for (final m in messages) {
+      if (m.isPending || m.japanese.isEmpty) continue;
+      buf.writeln(m.fromUser ? 'Học viên: ${m.japanese}' : 'AI: ${m.japanese}');
+    }
+    return buf.toString();
   }
 
   /// Luyện lại từ đầu với cùng tình huống (sau khi đã kết thúc buổi luyện).

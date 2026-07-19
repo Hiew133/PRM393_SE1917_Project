@@ -101,8 +101,23 @@ void main() {
     });
   });
 
-  group('Kết thúc buổi luyện (Tự do) gặp lỗi', () {
-    test('gỡ marker 🏁 và không khóa phiên', () async {
+  group('Kết thúc buổi luyện (Tự do)', () {
+    test('thành công → có bản phân tích, khóa phiên', () async {
+      final c = SpeakingController(
+          ai: FakeAi(), speech: FakeSpeech(), initialScenario: _freeScenario);
+      await c.selectScenario(_freeScenario);
+      await c.submitUserText('こんにちは。');
+
+      await c.endSession();
+
+      expect(c.sessionEnded, true);
+      expect(c.analysis, isNotNull);
+      expect(c.analysis!.overallScore, 75);
+      expect(c.analysis!.sentenceNotes, isNotEmpty);
+      c.dispose();
+    });
+
+    test('gặp lỗi → không khóa phiên, không có phân tích', () async {
       final ai = FakeAi();
       final c = SpeakingController(
           ai: ai, speech: FakeSpeech(), initialScenario: _freeScenario);
@@ -113,8 +128,46 @@ void main() {
       await c.endSession();
 
       expect(c.sessionEnded, false);
+      expect(c.analysis, isNull);
       expect(c.messages.any((m) => m.japanese.contains('🏁')), false);
       expect(c.error, isNotNull);
+      c.dispose();
+    });
+  });
+
+  group('Hội thoại thuần giọng nói (voiceOnly)', () {
+    test('Tự do: dừng mic là gửi luôn, không qua draft', () async {
+      final speech = FakeSpeech();
+      final c = SpeakingController(
+          ai: FakeAi(), speech: speech, initialScenario: _freeScenario);
+      await c.selectScenario(_freeScenario);
+      expect(c.voiceOnly, true);
+
+      await c.toggleMic(); // mở mic
+      speech.emitResult('こんにちは。'); // STT chốt một câu
+      await c.toggleMic(); // dừng → tự gửi, không có draft
+
+      expect(c.draft, isNull);
+      // chào AI + câu user + phản hồi AI = 3 tin nhắn
+      expect(c.messages.length, 3);
+      expect(c.messages[1].fromUser, true);
+      expect(c.messages[1].japanese, 'こんにちは。');
+      c.dispose();
+    });
+
+    test('chế độ thi vẫn giữ draft xem lại trước khi gửi', () async {
+      final speech = FakeSpeech();
+      final c = SpeakingController(
+          ai: FakeAi(), speech: speech, initialScenario: _examScenario);
+      await c.selectScenario(_examScenario);
+      expect(c.voiceOnly, false);
+
+      await c.toggleMic();
+      speech.emitResult('たなかさんは　がくせいです。');
+      await c.toggleMic(); // dừng → vào draft, CHƯA gửi
+
+      expect(c.draft, 'たなかさんは　がくせいです。');
+      expect(c.messages.length, 1); // mới chỉ có lời chào giám khảo
       c.dispose();
     });
   });

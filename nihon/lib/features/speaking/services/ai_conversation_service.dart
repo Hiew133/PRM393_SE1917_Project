@@ -36,6 +36,40 @@ class AiServiceException implements Exception {
   String toString() => message;
 }
 
+/// Ghi chú cho MỘT câu người học đã nói — dùng trong phân tích cuối buổi.
+class SentenceNote {
+  final String original; // câu người học nói (theo STT)
+  final String issue; // vấn đề của câu (tiếng Việt)
+  final String better; // cách nói đúng/tự nhiên hơn (tiếng Nhật)
+  final String betterReading; // hiragana của câu gợi ý
+
+  const SentenceNote({
+    required this.original,
+    required this.issue,
+    required this.better,
+    required this.betterReading,
+  });
+}
+
+/// Phân tích & góp ý TOÀN BỘ buổi hội thoại (hiện khi bấm "Kết thúc").
+class SessionAnalysis {
+  final int overallScore; // 0–100
+  final String summary; // nhận xét chung (tiếng Việt, 2–3 câu)
+  final List<String> strengths; // điểm mạnh
+  final List<String> improvements; // điểm cần cải thiện
+  final List<SentenceNote> sentenceNotes; // góp ý từng câu đáng chú ý
+  final String farewellJp; // câu tạm biệt tiếng Nhật (TTS đọc to)
+
+  const SessionAnalysis({
+    required this.overallScore,
+    required this.summary,
+    required this.strengths,
+    required this.improvements,
+    required this.sentenceNotes,
+    required this.farewellJp,
+  });
+}
+
 /// Dẫn dắt hội thoại + chấm (ước lượng) phát âm qua **Firebase AI Logic**.
 ///
 /// Không cần API key trong app: Firebase lo phần xác thực. Mỗi tình huống tạo
@@ -142,11 +176,18 @@ class AiConversationService {
   Future<GenerateContentResponse> _sendWithRetry(
     Content content, {
     int attempts = 3,
+  }) =>
+      _callWithRetry(() => _chat!.sendMessage(content), attempts: attempts);
+
+  /// Bọc MỘT lời gọi model bất kỳ với retry + dịch lỗi thành thông điệp Việt.
+  Future<GenerateContentResponse> _callWithRetry(
+    Future<GenerateContentResponse> Function() call, {
+    int attempts = 3,
   }) async {
     Object? lastErr;
     for (var i = 0; i < attempts; i++) {
       try {
-        return await _chat!.sendMessage(content);
+        return await call();
       } catch (e) {
         lastErr = e;
         if (!_isTransient(e) || i == attempts - 1) break;
@@ -334,6 +375,96 @@ QUY TẮC CHUNG:
 - Thí sinh trả lời lạc đề/không hiểu → được nhắc lại câu hỏi (nguyên văn) tối
   đa 1 lần trong reply_jp, vẫn chấm điểm lượt đó thấp và đi tiếp đúng thứ tự.''';
   }
+
+  /// Phân tích & góp ý TOÀN BỘ buổi hội thoại (gọi khi bấm "Kết thúc").
+  ///
+  /// [transcript]: hội thoại đã định dạng sẵn từng dòng
+  /// (`Học viên: …` / `AI: …`). Dùng model MỘT LẦN riêng (không đụng phiên
+  /// chat) với schema phân tích riêng.
+  Future<SessionAnalysis> analyzeConversation(String transcript) async {
+    final model = FirebaseAI.vertexAI().generativeModel(
+      model: ApiConfig.model,
+      generationConfig: GenerationConfig(
+        responseMimeType: 'application/json',
+        responseSchema: _analysisSchema,
+        temperature: 0.4,
+      ),
+    );
+
+    final prompt = '''
+Bạn là giáo viên tiếng Nhật giàu kinh nghiệm dạy người Việt trình độ N5–N4.
+Dưới đây là bản ghi một buổi luyện NÓI giữa học viên và AI (câu của học viên là
+văn bản nhận diện giọng nói — có thể sai chính tả do STT, đừng trừ điểm lỗi rõ
+ràng là do nhận diện).
+
+$transcript
+
+Hãy PHÂN TÍCH buổi hội thoại và trả về:
+- overall_score: điểm tổng thể 0–100 (ngữ pháp, từ vựng, độ tự nhiên, mức độ
+  duy trì hội thoại).
+- summary: nhận xét chung 2–3 câu tiếng Việt, giọng động viên.
+- strengths: 2–4 điểm mạnh cụ thể (tiếng Việt).
+- improvements: 2–4 điểm cần cải thiện cụ thể, kèm ví dụ ngắn nếu được (tiếng Việt).
+- sentence_notes: chọn TỐI ĐA 5 câu của HỌC VIÊN đáng góp ý nhất; mỗi câu gồm:
+  original (nguyên văn câu học viên), issue (vấn đề, tiếng Việt, 1 câu),
+  better (cách nói đúng/tự nhiên hơn, tiếng Nhật), better_reading (hiragana
+  của câu gợi ý). Nói tốt rồi thì vẫn có thể gợi ý cách nói TỰ NHIÊN hơn.
+- farewell_jp: MỘT câu tạm biệt + động viên ngắn bằng tiếng Nhật đơn giản (N5).''';
+
+    final res = await _callWithRetry(
+      () => model.generateContent([Content.text(prompt)]),
+    );
+    final raw = res.text;
+    if (raw == null || raw.trim().isEmpty) {
+      throw AiServiceException('Model không trả về nội dung phân tích.');
+    }
+    Map<String, dynamic> parsed;
+    try {
+      parsed = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      throw AiServiceException(
+        'AI trả dữ liệu phân tích không đúng định dạng. Bấm "Kết thúc" thử lại.',
+      );
+    }
+    return SessionAnalysis(
+      overallScore: (parsed['overall_score'] as num?)?.toInt() ?? 0,
+      summary: parsed['summary'] as String? ?? '',
+      strengths: List<String>.from(parsed['strengths'] as List? ?? const []),
+      improvements:
+          List<String>.from(parsed['improvements'] as List? ?? const []),
+      sentenceNotes: [
+        for (final n in (parsed['sentence_notes'] as List? ?? const []))
+          SentenceNote(
+            original: (n as Map)['original'] as String? ?? '',
+            issue: n['issue'] as String? ?? '',
+            better: n['better'] as String? ?? '',
+            betterReading: n['better_reading'] as String? ?? '',
+          ),
+      ],
+      farewellJp: parsed['farewell_jp'] as String? ?? 'おつかれさまでした！',
+    );
+  }
+
+  /// Schema structured output cho phân tích cuối buổi.
+  static final Schema _analysisSchema = Schema.object(
+    properties: {
+      'overall_score': Schema.integer(),
+      'summary': Schema.string(),
+      'strengths': Schema.array(items: Schema.string()),
+      'improvements': Schema.array(items: Schema.string()),
+      'sentence_notes': Schema.array(
+        items: Schema.object(
+          properties: {
+            'original': Schema.string(),
+            'issue': Schema.string(),
+            'better': Schema.string(),
+            'better_reading': Schema.string(),
+          },
+        ),
+      ),
+      'farewell_jp': Schema.string(),
+    },
+  );
 
   /// Schema cho structured output của Firebase AI Logic.
   ///
