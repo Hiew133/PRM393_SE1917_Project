@@ -7,6 +7,165 @@ import '../models/scenario.dart';
 /// Các thẻ ghim trên cùng của chế độ THI Nhật 1 (JPD113): bài đọc, tranh,
 /// kết quả và chip tiến độ. Chỉ nhận dữ liệu hiển thị — không đụng controller.
 
+/// Thẻ VAI của thí sinh (JPD326) — ghim suốt phần role-play. Thí sinh KHÔNG
+/// được chọn vai nên nhấn mạnh vai được gán.
+class RolePlayRoleCard extends StatelessWidget {
+  final String roleLabel; // "A" | "B"
+  final String body; // nguyên văn mô tả vai
+  final List<String> info; // bảng 〜についての情報 (nếu có)
+  const RolePlayRoleCard({
+    super.key,
+    required this.roleLabel,
+    required this.body,
+    this.info = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFD97706);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8EC),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎭', style: TextStyle(fontSize: 13)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text('VAI CỦA BẠN · $roleLabel',
+                    style: AppTextStyles.overline.copyWith(color: accent)),
+              ),
+              Text('60đ',
+                  style: AppTextStyles.latin(
+                      size: 10, weight: FontWeight.w800, color: accent)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Bạn không được chọn vai — hãy nhập vai $roleLabel và hội thoại '
+              'với giám khảo.',
+              style:
+                  AppTextStyles.latin(size: 10.5, color: AppColors.textMuted)),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 170),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(body,
+                      style: AppTextStyles.jp(
+                          size: 14,
+                          height: 1.65,
+                          weight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                  if (info.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    for (final line in info)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Text('＊$line',
+                            style: AppTextStyles.jp(
+                                size: 12.5,
+                                height: 1.5,
+                                color: AppColors.textSecondary)),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bảng điểm JPD326: role-play 60 + câu 1 20đ + câu 2 10đ + thể hiện 10đ.
+class Jpd326ResultCard extends StatelessWidget {
+  final int rolePlay;
+  final int q1;
+  final int q2;
+  final int delivery;
+  final int total;
+  const Jpd326ResultCard({
+    super.key,
+    required this.rolePlay,
+    required this.q1,
+    required this.q2,
+    required this.delivery,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget chip(String label, int pts, int max) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border:
+                Border.all(color: AppColors.speaking.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('$label $pts/$max',
+              style: AppTextStyles.latin(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: AppColors.textSecondary)),
+        );
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF8F2),
+        border: Border.all(color: AppColors.speaking.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 13)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text('KẾT QUẢ · JPD326',
+                    style: AppTextStyles.overline
+                        .copyWith(color: AppColors.speaking)),
+              ),
+              Text('$total/100',
+                  style: AppTextStyles.latin(
+                      size: 15,
+                      weight: FontWeight.w900,
+                      color: AppColors.speaking)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              chip('Role-play', rolePlay, 60),
+              chip('Câu 1', q1, 20),
+              chip('Câu 2', q2, 10),
+              chip('Thể hiện', delivery, 10),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Thẻ "bài đọc" ghim trên cùng (giai đoạn READING — SV đọc to đoạn văn).
 class ExamReadingCard extends StatelessWidget {
   final String jp;

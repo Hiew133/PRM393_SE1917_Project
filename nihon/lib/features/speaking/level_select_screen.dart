@@ -10,6 +10,7 @@ import '../admin/speaking/data/admin_repository.dart';
 import '../admin/speaking/exam_scenario.dart';
 import '../admin/speaking/models/admin_models.dart';
 import '../admin/speaking/student_draw_screen.dart';
+import 'models/jpd326_exam_sets.dart';
 import 'models/nihon1_exam_sets.dart';
 import 'models/nihon2_exam_sets.dart';
 import 'speaking_history_screen.dart';
@@ -196,6 +197,82 @@ class LevelSelectScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.pop(sheetCtx);
                         _startNihon2(context, exam);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _startJpd326(BuildContext context, Jpd326Exam exam) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => SpeakingScreen(
+        examScenario: exam.toScenario(),
+        title: exam.title,
+      ),
+    ));
+  }
+
+  /// Chọn chế độ Nhật 5 (JPD326): bốc 場面 (vai A/B do app gán ngẫu nhiên —
+  /// đề thi quy định SV không được chọn vai) + 2 câu hỏi bốc từ ngân hàng.
+  Future<void> _openJpd326(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('THI NHẬT 5 · BỐC 場面',
+                    style: AppTextStyles.overline),
+              ),
+            ),
+            ListTile(
+              leading: const Text('🎲', style: TextStyle(fontSize: 22)),
+              title: Text('Bốc ngẫu nhiên',
+                  style:
+                      AppTextStyles.latin(size: 14, weight: FontWeight.w700)),
+              subtitle: Text(
+                  'Bốc 1 trong ${kJpd326Scenes.length} 場面 · vai A/B ngẫu nhiên',
+                  style: AppTextStyles.latin(
+                      size: 11, color: AppColors.textMuted)),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _startJpd326(context, Jpd326Exam.draw());
+              },
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final scene in kJpd326Scenes)
+                    ListTile(
+                      leading:
+                          Text(scene.emoji, style: const TextStyle(fontSize: 20)),
+                      title: Text(scene.title,
+                          style: AppTextStyles.latin(
+                              size: 13, weight: FontWeight.w600)),
+                      subtitle: Text(
+                          '${scene.label} · vai do hệ thống gán',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.jp(
+                              size: 11, color: AppColors.textMuted)),
+                      onTap: () {
+                        Navigator.pop(sheetCtx);
+                        _startJpd326(context, Jpd326Exam.forScene(scene));
                       },
                     ),
                 ],
@@ -414,6 +491,18 @@ class LevelSelectScreen extends StatelessWidget {
                   onTap: () => isGuest
                       ? showGuestLockDialog(context)
                       : _openJpd316(context),
+                ),
+                const SizedBox(height: 12),
+                _LevelCard(
+                  emoji: '🟠',
+                  color: const Color(0xFFD97706),
+                  title: 'Nhật 5 · Thi nói JPD326',
+                  subtitle:
+                      'Role-play 60đ (không chọn vai) + 2 câu hỏi 30đ · AI đóng vai',
+                  locked: isGuest,
+                  onTap: () => isGuest
+                      ? showGuestLockDialog(context)
+                      : _openJpd326(context),
                 ),
                 const SizedBox(height: 12),
                 _LevelCard(

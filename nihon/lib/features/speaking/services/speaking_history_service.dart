@@ -36,6 +36,8 @@ class SpeakingSessionRecord {
         return 'Thi Nhật 2';
       case 'jpd316':
         return 'Thi Nhật 3';
+      case 'jpd326':
+        return 'Thi Nhật 5';
       default:
         return 'Tự do';
     }

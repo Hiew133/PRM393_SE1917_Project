@@ -53,6 +53,16 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   bool get _isNihon2 =>
       widget.examScenario?.drillType == ExamDrillType.nihon2;
 
+  /// Nhật 5 (JPD326): role-play 60đ + 2 câu hỏi 30đ + thể hiện 10đ.
+  bool get _isJpd326 =>
+      widget.examScenario?.drillType == ExamDrillType.jpd326;
+
+  /// Thẻ VAI ghim trong lúc còn role-play (JPD326).
+  bool get _showRoleCard =>
+      _isJpd326 &&
+      widget.examScenario?.rolePlayCard != null &&
+      !_controller.examFinished;
+
   /// Chế độ thi Nhật 3 (JPD316, hội thoại theo đề giảng viên).
   bool get _isJpd316 => widget.isExam && !_isExamDrill;
 
@@ -117,7 +127,24 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                   ),
                 if (_showPictureCard)
                   ExamPictureCard(picture: widget.examScenario!.examPicture!),
-                if (_isExamDrill && _controller.examFinished)
+                if (_showRoleCard)
+                  RolePlayRoleCard(
+                    roleLabel: widget.examScenario!.rolePlayRoleLabel ?? 'A',
+                    body: widget.examScenario!.rolePlayCard!,
+                    info: widget.examScenario!.rolePlayCardInfo,
+                  ),
+                if (_isJpd326 && _controller.examFinished)
+                  Builder(builder: (context) {
+                    final b = _controller.jpd326Breakdown();
+                    return Jpd326ResultCard(
+                      rolePlay: b.rolePlay,
+                      q1: b.q1,
+                      q2: b.q2,
+                      delivery: b.delivery,
+                      total: b.total,
+                    );
+                  })
+                else if (_isExamDrill && _controller.examFinished)
                   ExamResultCard(
                     scores: _controller.examTurnScores,
                     readingMax: _isNihon2 ? 45 : 30,
@@ -179,18 +206,22 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-              _isNihon2
-                  ? '日本語２ thi nói · AI là giám khảo'
-                  : '日本語１ thi nói · AI là giám khảo',
+              _isJpd326
+                  ? '日本語５ thi nói · AI đóng vai + giám khảo'
+                  : _isNihon2
+                      ? '日本語２ thi nói · AI là giám khảo'
+                      : '日本語１ thi nói · AI là giám khảo',
               style: AppTextStyles.jp(
                   size: 13,
                   weight: FontWeight.w700,
                   color: AppColors.speaking)),
           Text(
               widget.title ??
-                  (_isNihon2
-                      ? 'Đọc to bài (45đ) + 3 câu hỏi (45đ)'
-                      : 'Đọc to bài (30đ) + 4 câu hỏi (60đ)'),
+                  (_isJpd326
+                      ? 'Role-play (60đ) + 2 câu hỏi (30đ)'
+                      : _isNihon2
+                          ? 'Đọc to bài (45đ) + 3 câu hỏi (45đ)'
+                          : 'Đọc to bài (30đ) + 4 câu hỏi (60đ)'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style:
@@ -313,10 +344,23 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         color: AppColors.speaking
       );
     }
+    if (_isJpd326 && (c.examPhase == 'q1' || c.examPhase == 'q2')) {
+      return (text: 'Trả lời câu hỏi của giám khảo 💬', color: AppColors.speaking);
+    }
+    if (_isJpd326) {
+      return (
+        text: 'Nhập vai ${widget.examScenario?.rolePlayRoleLabel ?? ''} · bấm mic để nói 🎭',
+        color: const Color(0xFFD97706)
+      );
+    }
     return (text: 'Sẵn sàng · bấm mic để nói', color: AppColors.textMuted);
   }
 
   String get _roleLabel {
+    if (_isJpd326) {
+      final me = widget.examScenario?.rolePlayRoleLabel ?? 'A';
+      return 'Đóng vai ${me == 'A' ? 'B' : 'A'} · 試験官';
+    }
     if (_isExamDrill) return 'Giám khảo · 試験官';
     if (_isJpd316) return 'Giảng viên · 先生';
     return 'Bạn đồng hành · AI';

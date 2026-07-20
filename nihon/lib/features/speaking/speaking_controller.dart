@@ -103,8 +103,12 @@ class SpeakingController extends ChangeNotifier {
   // tự khai để tránh model nhảy cóc/kết thúc sớm làm UI đi theo.
   int _answeredCount = 0; // số lượt SV đã trả lời thành công
   String? _examProgress; // "Đọc bài", "Câu 2/4", "Hoàn thành"
-  String? _examPhase; // "reading" | "picture" | "free" | "done"
+  String? _examPhase; // "reading" | "picture" | "free" | "roleplay" | "q1" | "q2" | "done"
   bool _examFinished = false; // đã xong toàn bộ phần thi
+
+  /// JPD326: giai đoạn TẠI THỜI ĐIỂM thí sinh nói của từng lượt đã chấm —
+  /// dùng để quy điểm về đúng hạng mục (role-play 60đ / câu 1 20đ / câu 2 10đ).
+  final List<String> _turnPhases = [];
 
   // Chế độ Tự do / JPD316: người dùng chủ động kết thúc buổi luyện → AI phân
   // tích cả buổi hội thoại rồi khóa mic; "Luyện lại" mở phiên mới.
@@ -182,6 +186,7 @@ class SpeakingController extends ChangeNotifier {
     _error = null;
     _draft = null;
     _answeredCount = 0;
+    _turnPhases.clear();
     _sessionEnded = false;
     _analyzing = false;
     _analysis = null;
@@ -412,13 +417,22 @@ class SpeakingController extends ChangeNotifier {
       readingMatch = readingMatchPercent(text, _scenario.readingPassage!);
     }
 
+    // JPD326: nhớ giai đoạn lúc thí sinh NÓI (trước khi model chuyển phase),
+    // để quy điểm lượt này về đúng hạng mục.
+    final phaseWhenSpoken = _examPhase ?? 'roleplay';
+
     try {
       final turn =
           await _ai.sendUserUtterance(text, readingMatchPercent: readingMatch);
       // Lượt trả lời thành công → tiến độ thi tiến một bước (tính cục bộ).
       if (_scenario.examDrill) {
         _answeredCount++;
-        _syncExamState();
+        if (_scenario.drillType == ExamDrillType.jpd326) {
+          _turnPhases.add(phaseWhenSpoken);
+          _applyJpd326State(turn);
+        } else {
+          _syncExamState();
+        }
       }
       // Gắn điểm phát âm vào bong bóng người dùng vừa thêm.
       final userIndex = messages.length - 2;
@@ -506,14 +520,59 @@ class SpeakingController extends ChangeNotifier {
         return 'nihon1';
       case ExamDrillType.nihon2:
         return 'nihon2';
+      case ExamDrillType.jpd326:
+        return 'jpd326';
       case ExamDrillType.none:
         return _scenario.id.startsWith('exam_') ? 'jpd316' : 'free';
     }
   }
 
+  /// Điểm từng hạng mục JPD326 theo thang của trường:
+  /// role-play 60đ (trung bình các lượt role-play) + câu 1 20đ + câu 2 10đ
+  /// + thể hiện 10đ (trung bình toàn bài).
+  ({int rolePlay, int q1, int q2, int delivery, int total}) jpd326Breakdown() {
+    final scores = examTurnScores;
+    final roleplay = <int>[];
+    int? q1;
+    int? q2;
+    for (var i = 0; i < scores.length && i < _turnPhases.length; i++) {
+      final s = scores[i];
+      if (s == null) continue;
+      switch (_turnPhases[i]) {
+        case 'q1':
+          q1 ??= s;
+        case 'q2':
+          q2 ??= s;
+        default:
+          roleplay.add(s);
+      }
+    }
+    final graded = scores.whereType<int>().toList();
+    final avgAll =
+        graded.isEmpty ? 0.0 : graded.reduce((a, b) => a + b) / graded.length;
+    final avgRole = roleplay.isEmpty
+        ? 0.0
+        : roleplay.reduce((a, b) => a + b) / roleplay.length;
+
+    final rolePlayPts = (avgRole * 60 / 100).round();
+    final q1Pts = ((q1 ?? 0) * 20 / 100).round();
+    final q2Pts = ((q2 ?? 0) * 10 / 100).round();
+    final deliveryPts = (avgAll * 10 / 100).round();
+    return (
+      rolePlay: rolePlayPts,
+      q1: q1Pts,
+      q2: q2Pts,
+      delivery: deliveryPts,
+      total: rolePlayPts + q1Pts + q2Pts + deliveryPts,
+    );
+  }
+
   /// Tổng điểm thi /100 — cùng công thức với ExamResultCard (đọc + câu hỏi
   /// 15đ/câu + tác phong 10đ từ trung bình các lượt).
   int _examTotalScore() {
+    if (_scenario.drillType == ExamDrillType.jpd326) {
+      return jpd326Breakdown().total;
+    }
     final isN2 = _scenario.drillType == ExamDrillType.nihon2;
     final readingMax = isN2 ? 45 : 30;
     final questionCount = isN2 ? 3 : 4;
@@ -554,11 +613,35 @@ class SpeakingController extends ChangeNotifier {
   ///
   /// Nhật 1 (JPD113): 0=đọc bài, 1–3=câu theo tranh, 4=câu tự do, 5=xong.
   /// Nhật 2 (JPD123): 0=đọc bài, 1=câu theo tranh, 2–3=câu không tranh, 4=xong.
+  /// JPD326: role-play dài ngắn tuỳ tình huống nên KHÔNG đếm cục bộ được —
+  /// lấy phase/tiến độ model tự khai. Model chỉ điều khiển phần hiển thị và
+  /// thời điểm kết thúc; điểm vẫn do app quy đổi theo thang của trường.
+  void _applyJpd326State(AiTurn turn) {
+    final phase = turn.examPhase;
+    if (phase != null && phase.isNotEmpty) _examPhase = phase;
+    _examFinished = turn.examFinished || _examPhase == 'done';
+    switch (_examPhase) {
+      case 'q1':
+        _examProgress = 'Câu hỏi 1/2';
+      case 'q2':
+        _examProgress = 'Câu hỏi 2/2';
+      case 'done':
+        _examProgress = 'Hoàn thành';
+      default:
+        _examProgress = 'Role-play';
+    }
+  }
+
   void _syncExamState() {
     switch (_scenario.drillType) {
       case ExamDrillType.none:
         _examPhase = null;
         _examProgress = null;
+        _examFinished = false;
+      case ExamDrillType.jpd326:
+        // Lượt mở đầu (chưa có lượt nói nào) — phần sau do model dẫn.
+        _examPhase = 'roleplay';
+        _examProgress = 'Role-play';
         _examFinished = false;
       case ExamDrillType.nihon1:
         _examFinished = false;

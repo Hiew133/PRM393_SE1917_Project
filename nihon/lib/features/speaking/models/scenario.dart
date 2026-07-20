@@ -25,6 +25,11 @@ enum ExamDrillType {
   /// Nhật 2 (JPD123): đọc to 45đ + 3 câu Q&A (1 theo tranh + 2 không tranh,
   /// 3×15đ) + tác phong 10đ. Đề đọc (A) và đề Q&A (B) BỐC ĐỘC LẬP.
   nihon2,
+
+  /// Nhật 5 (JPD326): role-play hội thoại 1-1 60đ (SV không chọn vai) +
+  /// 2 câu hỏi 30đ (20đ + 10đ) + điểm thể hiện 10đ. Phần chính là hội thoại
+  /// NHIỀU LƯỢT nên tiến độ do model tự khai (xem SpeakingController).
+  jpd326,
 }
 
 /// Một tình huống hội thoại AI.
@@ -48,6 +53,16 @@ class Scenario {
   final String? readingPassage;
   final String? readingPassageVi;
 
+  /// Thẻ VAI của thí sinh (chỉ có ở JPD326): nguyên văn phần mô tả vai mà SV
+  /// phải đóng trong role-play — UI ghim thẻ này suốt phần 1.
+  final String? rolePlayCard;
+
+  /// Bảng "〜についての情報" đi kèm vai (nếu đề có).
+  final List<String> rolePlayCardInfo;
+
+  /// Nhãn vai của thí sinh ("A" / "B") — SV không được chọn, app gán.
+  final String? rolePlayRoleLabel;
+
   const Scenario({
     required this.id,
     required this.emoji,
@@ -58,6 +73,9 @@ class Scenario {
     this.examPicture,
     this.readingPassage,
     this.readingPassageVi,
+    this.rolePlayCard,
+    this.rolePlayCardInfo = const [],
+    this.rolePlayRoleLabel,
   });
 
   /// Có phải chế độ THI format cứng không (AI làm giám khảo, chạy đúng lượt).

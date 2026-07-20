@@ -12,12 +12,17 @@ import '../models/scenario.dart';
 /// Nhật 1) nhưng app KHÔNG đọc chúng — model tự khai chỉ để bám format thi,
 /// còn tiến độ/phase do [SpeakingController] tính cục bộ theo số lượt SV đã
 /// trả lời (tránh model nhảy cóc/kết thúc sớm kéo UI đi theo).
+/// Riêng **Nhật 5 (JPD326)** phần role-play dài ngắn không cố định nên không
+/// đếm cục bộ được — controller đọc [examPhase]/[examFinished] cho chế độ đó.
 class AiTurn {
   final String replyJp; // câu trả lời của AI (tiếng Nhật)
   final String replyReading; // cách đọc hiragana
   final String replyTranslation; // dịch tiếng Việt
   final int? pronunciationScore; // điểm cho câu vừa nói (null nếu là lời chào mở đầu)
   final String? feedback; // nhận xét tiếng Việt (null nếu mở đầu)
+  final String? examPhase; // roleplay | q1 | q2 | done (JPD326)
+  final String? examProgress; // nhãn tiến độ model tự khai
+  final bool examFinished;
 
   const AiTurn({
     required this.replyJp,
@@ -25,6 +30,9 @@ class AiTurn {
     required this.replyTranslation,
     this.pronunciationScore,
     this.feedback,
+    this.examPhase,
+    this.examProgress,
+    this.examFinished = false,
   });
 }
 
@@ -153,6 +161,9 @@ class AiConversationService {
       pronunciationScore:
           isOpening ? null : (parsed['pronunciation_score'] as num?)?.toInt(),
       feedback: isOpening ? null : parsed['feedback'] as String?,
+      examPhase: parsed['exam_phase'] as String?,
+      examProgress: parsed['exam_progress'] as String?,
+      examFinished: parsed['exam_finished'] as bool? ?? false,
     );
   }
 
@@ -250,6 +261,8 @@ class AiConversationService {
         return _examPrompt(s);
       case ExamDrillType.nihon2:
         return _exam123Prompt(s);
+      case ExamDrillType.jpd326:
+        return _exam326Prompt(s);
       case ExamDrillType.none:
         break;
     }
@@ -468,6 +481,64 @@ Hãy PHÂN TÍCH buổi hội thoại và trả về:
     },
   );
 
+  /// System prompt cho chế độ THI NÓI Nhật 5 (JPD326) — format theo
+  /// "Hướng dẫn ôn thi JPD326 Speaking" của trường:
+  /// ROLE-PLAY hội thoại 1-1 (60đ) → 2 CÂU HỎI (20đ + 10đ) → thể hiện (10đ).
+  ///
+  /// Khác Nhật 1/Nhật 2: phần 1 là hội thoại NHIỀU LƯỢT, độ dài không cố định
+  /// → model tự quyết khi nào role-play xong và tự khai `exam_phase`.
+  String _exam326Prompt(Scenario s) {
+    return '''
+${s.aiPersona}
+
+ĐÂY LÀ KỲ THI NÓI JPD326 (thang 100đ = ROLE-PLAY 60đ + CÂU HỎI 1 20đ +
+CÂU HỎI 2 10đ + thể hiện/ngữ điệu 10đ). Chạy đúng 3 giai đoạn, KHÔNG bỏ bước,
+KHÔNG tự chế câu hỏi khác:
+
+(1) ROLE-PLAY: bạn NHẬP VAI nhân vật của mình (đã nêu ở trên) và hội thoại tự
+    nhiên với thí sinh. TUYỆT ĐỐI không nói thay vai của thí sinh, không nhắc
+    bài, không giải thích bằng tiếng Việt trong lúc đang nhập vai.
+(2) CÂU HỎI 1 (20đ) — hỏi NGUYÊN VĂN câu hỏi 1 của đề.
+(3) CÂU HỎI 2 (10đ) — hỏi NGUYÊN VĂN câu hỏi 2 của đề, rồi kết thúc.
+
+LƯỢT MỞ ĐẦU (khi được yêu cầu bắt đầu phần thi):
+- reply_jp: chào ngắn với tư cách giám khảo + nói rõ thí sinh đóng vai nào,
+  rồi NHẬP VAI mở lời câu đầu tiên của role-play (nếu vai của bạn là người
+  chủ động bắt nói) hoặc mời thí sinh bắt đầu (nếu vai thí sinh chủ động).
+  App đã hiển thị sẵn thẻ vai cho thí sinh — KHÔNG đọc lại toàn bộ mô tả vai.
+- exam_phase: "roleplay"; exam_progress: "Role-play"; exam_finished: false.
+- pronunciation_score, feedback: null.
+
+TRONG ROLE-PLAY (mỗi lượt thí sinh nói):
+- Chấm lượt vừa rồi: pronunciation_score (0–100 — mức độ đạt mục tiêu giao tiếp
+  của vai, ngữ pháp/từ vựng bài 6–10, độ tự nhiên), feedback (tiếng Việt, 1 câu).
+- reply_jp: câu thoại TIẾP THEO đúng vai, NGẮN (1–2 câu), tự nhiên như hội thoại
+  thật; chủ động đẩy tình huống tiến triển.
+- exam_phase: "roleplay"; exam_progress: "Role-play".
+- Khi tình huống đã GIẢI QUYẾT XONG mục tiêu của cả hai vai (thường sau 4–7 lượt
+  của thí sinh): kết thúc role-play bằng một câu chốt tự nhiên trong vai, RỒI
+  chuyển sang phần 2 NGAY TRONG CÙNG lượt đó: nói ngắn
+  「では、質問に答えてください。」+ CÂU HỎI 1 (nguyên văn).
+  Lượt đó đặt exam_phase: "q1"; exam_progress: "Câu hỏi 1/2".
+
+SAU KHI THÍ SINH TRẢ LỜI CÂU HỎI 1:
+- Chấm câu trả lời đó (pronunciation_score, feedback tiếng Việt 1 câu).
+- reply_jp: phản hồi rất ngắn ("はい、わかりました。") + CÂU HỎI 2 (nguyên văn).
+- exam_phase: "q2"; exam_progress: "Câu hỏi 2/2".
+
+SAU KHI THÍ SINH TRẢ LỜI CÂU HỎI 2 → KẾT THÚC:
+- Chấm câu trả lời đó (pronunciation_score, feedback tiếng Việt).
+- reply_jp: nhận xét tổng kết NGẮN +
+  「これで試験を終わります。おつかれさまでした。」
+- exam_phase: "done"; exam_progress: "Hoàn thành"; exam_finished: true.
+
+QUY TẮC CHUNG:
+- reply_jp luôn NGẮN, tự nhiên, đúng vai; reply_reading là hiragana của reply_jp;
+  reply_translation là bản dịch tiếng Việt.
+- Thí sinh nói lạc đề/không hiểu → được gợi lại TỐI ĐA 1 lần trong vai, vẫn chấm
+  điểm lượt đó thấp rồi đi tiếp.''';
+  }
+
   /// Schema cho structured output của Firebase AI Logic.
   ///
   /// Các trường `exam_*` GIỮ LẠI CÓ CHỦ ĐÍCH dù app không đọc: bắt model tự
@@ -482,7 +553,8 @@ Hãy PHÂN TÍCH buổi hội thoại và trả về:
       'feedback': Schema.string(nullable: true),
       'exam_progress': Schema.string(nullable: true),
       'exam_phase': Schema.enumString(
-        enumValues: ['reading', 'picture', 'free', 'done'],
+        // reading/picture/free: Nhật 1 & Nhật 2; roleplay/q1/q2: Nhật 5.
+        enumValues: ['reading', 'picture', 'free', 'roleplay', 'q1', 'q2', 'done'],
         nullable: true,
       ),
       'exam_finished': Schema.boolean(nullable: true),
