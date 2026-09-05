@@ -13,6 +13,15 @@
   <img alt="Platform" src="https://img.shields.io/badge/Android%20%C2%B7%20Web-lightgrey" />
 </p>
 
+<p align="center">
+  <b>🌐 Dùng thử ngay trên web: <a href="https://sakura-nihon.web.app">sakura-nihon.web.app</a></b><br/>
+  <sub>Mở bằng trình duyệt là chạy, không cần cài. Trên điện thoại có thể "Thêm vào màn hình chính" để dùng như app.</sub>
+</p>
+
+<p align="center">
+  <b>📦 Tải bản Android: <a href="https://github.com/Hiew133/PRM393_SE1917_Project/releases/latest">Releases</a></b>
+</p>
+
 ---
 
 ## Đây là gì
@@ -24,8 +33,6 @@ quên, và mở miệng nói thành câu.
 App có đủ vòng học khép kín: học bài → ôn theo SRS → tự kiểm tra → nói chuyện
 với giáo viên AI → xem tiến độ. Kèm bảng quản trị cho giáo viên tự soạn đề thi
 nói mà không cần đụng vào code.
-
-📦 **Bản build sẵn:** [`Sakura-20260720.apk`](Sakura-20260720.apk)
 
 ## Tính năng
 

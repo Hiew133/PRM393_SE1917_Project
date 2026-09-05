@@ -1,1 +1,4 @@
 nihon.zip
+
+# Bản build Android phát hành qua GitHub Releases, không commit vào repo
+*.apk
