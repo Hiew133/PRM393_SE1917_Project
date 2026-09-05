@@ -77,6 +77,9 @@ nói mà không cần đụng vào code.
 
 - **Không có API key trong app.** Mọi lời gọi Gemini đi qua **Firebase AI Logic**
   + **App Check**, nên key không nằm trong bundle để ai đó rút ra.
+- **App Check thật, không phải tắt cho xong.** Web dùng reCAPTCHA Enterprise,
+  Android dùng Play Integrity (bản sideload thì debug token truyền lúc build).
+  Không token nào nằm trong repo — xem [`nihon/BUILD.md`](nihon/BUILD.md).
 - **Font bundle sẵn** (Inter, Noto Sans JP, DM Sans, Lexend) thay vì `google_fonts`
   tải runtime — mở app không phải chờ fetch font qua mạng.
 - **TTS đa nền tảng** — bản Android dùng `flutter_tts`, bản web có engine riêng
