@@ -41,9 +41,10 @@ void main() async {
                 debugToken:
                     _androidDebugToken.isEmpty ? null : _androidDebugToken,
               ),
-        // Web bắt buộc truyền provider; ở chế độ debug (bật cờ trong
-        // web/index.html) SDK bỏ qua reCAPTCHA và dùng debug token.
-        providerWeb: ReCaptchaV3Provider(_webRecaptchaSiteKey),
+        // Web dùng reCAPTCHA ENTERPRISE - phải khớp với thứ đã đăng ký ở
+        // Console → App Check → app web. Đăng ký Enterprise mà code dùng
+        // ReCaptchaV3Provider (hoặc ngược lại) thì token bị từ chối.
+        providerWeb: ReCaptchaEnterpriseProvider(_webRecaptchaSiteKey),
       );
     } catch (e, st) {
       debugPrint('App Check activate failed: $e\n$st');
@@ -83,11 +84,13 @@ const String _androidDebugToken = String.fromEnvironment(
   'APP_CHECK_DEBUG_TOKEN',
 );
 
-/// reCAPTCHA v3 site key cho App Check trên Web.
-/// - DEV: chỉ cần là chuỗi placeholder vì đã bật debug token trong index.html.
-/// - PRODUCTION: thay bằng site key thật (Firebase Console → App Check → web app
-///   → reCAPTCHA v3) qua: --dart-define=RECAPTCHA_SITE_KEY=xxxx
+/// reCAPTCHA **Enterprise** site key (key ID) cho App Check trên Web.
+///
+/// Phải khớp với provider đã đăng ký ở Firebase Console → App Check → app web.
+/// Site key là public (nó nằm trong main.dart.js) — cái phải giữ kín là secret
+/// key bên Console. Truyền lúc build:
+///   `flutter build web --dart-define-from-file=appcheck.web.local.json`
 const String _webRecaptchaSiteKey = String.fromEnvironment(
   'RECAPTCHA_SITE_KEY',
-  defaultValue: 'recaptcha-v3-placeholder',
+  defaultValue: 'recaptcha-site-key-chua-duoc-truyen',
 );

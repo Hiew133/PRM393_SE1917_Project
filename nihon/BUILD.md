@@ -25,11 +25,13 @@ cp appcheck.android.example.json appcheck.android.local.json
 
 ---
 
-## Web — reCAPTCHA v3
+## Web — reCAPTCHA Enterprise
 
-Bản web **không dùng debug token**. Site key lấy ở Firebase Console → App Check
-→ app **web** → reCAPTCHA (chọn **Score based v3**, KHÔNG phải v2, cũng không
-phải Enterprise — code dùng `ReCaptchaV3Provider`). Nhớ khai đủ domain
+Bản web **không dùng debug token**. Dự án này đăng ký **reCAPTCHA Enterprise**
+ở Firebase Console → App Check → app **web**, nên code phải dùng
+`ReCaptchaEnterpriseProvider`. Provider trong code và provider đã đăng ký ở
+Console **phải khớp nhau** — lệch là App Check từ chối token và mọi tính năng
+AI trên web chết. Nhớ khai đủ domain
 `sakura-nihon.web.app`, `sakura-nihon.firebaseapp.com`, `localhost`.
 
 Site key là **public** (nó nằm trong JS của trang). Secret key thì ở lại
