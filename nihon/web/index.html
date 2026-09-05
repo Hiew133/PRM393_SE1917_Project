@@ -40,19 +40,9 @@
 </head>
 <body>
   <!--
-    App Check trên web: KHÔNG đặt debug token ở đây.
-
-    Mọi thứ trong file này đều đi thẳng vào bản deploy và ai xem source trang
-    cũng đọc được. Debug token bypass hoàn toàn App Check, nên để lộ một cái
-    là mở cửa cho người lạ gọi Firebase (Firestore, Storage, Gemini qua AI
-    Logic) nhân danh project này.
-
-    Bản deploy thật: dùng reCAPTCHA v3 —
-      flutter build web --dart-define=RECAPTCHA_SITE_KEY=<site-key-that>
-    (lấy site key ở Firebase Console → App Check → app web → reCAPTCHA v3).
-
-    Chỉ khi test tại máy: tạm thêm dòng dưới, chạy xong XOÁ ĐI, đừng commit.
-      <script>self.FIREBASE_APPCHECK_DEBUG_TOKEN = "<token-cua-may-ban>";</script>
+    App Check: KHÔNG đặt debug token trong file này — mọi thứ ở đây đều đi vào
+    bản deploy và ai xem source trang cũng đọc được. Web dùng reCAPTCHA v3,
+    truyền site key lúc build. Xem BUILD.md.
   -->
 
   <!--

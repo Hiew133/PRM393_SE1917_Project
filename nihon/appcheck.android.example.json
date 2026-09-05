@@ -1,0 +1,7 @@
+{
+  "_doc": "Chép thành appcheck.android.local.json (đã gitignore) rồi điền token thật.",
+
+  "APP_CHECK_DEBUG_TOKEN": "uuid-debug-token-da-dang-ky-trong-console",
+
+  "USE_DEBUG_APPCHECK": true
+}

@@ -50,4 +50,4 @@ app.*.map.json
 .claude/
 
 # Giá trị thật của App Check / reCAPTCHA — không commit
-appcheck.local.json
+appcheck*.local.json

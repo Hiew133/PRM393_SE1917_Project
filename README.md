@@ -115,9 +115,10 @@ App Check được bật Enforced, nên build/deploy cần truyền reCAPTCHA si
 đầy đủ nằm trong [`nihon/BUILD.md`](nihon/BUILD.md).
 
 ```bash
-cp appcheck.example.json appcheck.local.json   # rồi điền giá trị thật
-flutter build web --dart-define-from-file=appcheck.local.json
-flutter build apk --release --dart-define-from-file=appcheck.local.json
+cp appcheck.web.example.json appcheck.web.local.json          # điền site key
+cp appcheck.android.example.json appcheck.android.local.json  # điền debug token
+flutter build web --dart-define-from-file=appcheck.web.local.json
+flutter build apk --release --dart-define-from-file=appcheck.android.local.json
 ```
 
 > Đồ án môn **PRM393 – Mobile Programming**, lớp SE1917.

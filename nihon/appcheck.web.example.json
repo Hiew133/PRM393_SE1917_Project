@@ -1,0 +1,5 @@
+{
+  "_doc": "Chép thành appcheck.web.local.json (đã gitignore) rồi điền site key thật.",
+
+  "RECAPTCHA_SITE_KEY": "site-key-reCAPTCHA-v3-cua-ban-6L..."
+}

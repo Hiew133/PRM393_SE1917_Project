@@ -1,9 +1,0 @@
-{
-  "_doc": "Chép file này thành appcheck.local.json rồi điền giá trị thật. appcheck.local.json đã bị gitignore - đừng bao giờ commit nó.",
-
-  "RECAPTCHA_SITE_KEY": "site-key-reCAPTCHA-v3-that-cho-ban-web",
-
-  "APP_CHECK_DEBUG_TOKEN": "uuid-debug-token-cua-may-ban",
-
-  "USE_DEBUG_APPCHECK": false
-}
