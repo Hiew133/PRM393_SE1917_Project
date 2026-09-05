@@ -40,13 +40,20 @@
 </head>
 <body>
   <!--
-    App Check debug token DÙNG CHUNG cho team (bản web demo). Phải đăng ký đúng
-    UUID này ở Firebase Console → App Check → app WEB → Manage debug tokens thì
-    mới có tác dụng (đăng ký cho app Android KHÔNG áp dụng cho web).
-    ⚠️ Token này công khai trong bản deploy → chỉ dùng để DEMO. Bản production
-    thật nên đổi sang reCAPTCHA v3 và bỏ dòng dưới.
+    App Check trên web: KHÔNG đặt debug token ở đây.
+
+    Mọi thứ trong file này đều đi thẳng vào bản deploy và ai xem source trang
+    cũng đọc được. Debug token bypass hoàn toàn App Check, nên để lộ một cái
+    là mở cửa cho người lạ gọi Firebase (Firestore, Storage, Gemini qua AI
+    Logic) nhân danh project này.
+
+    Bản deploy thật: dùng reCAPTCHA v3 —
+      flutter build web --dart-define=RECAPTCHA_SITE_KEY=<site-key-that>
+    (lấy site key ở Firebase Console → App Check → app web → reCAPTCHA v3).
+
+    Chỉ khi test tại máy: tạm thêm dòng dưới, chạy xong XOÁ ĐI, đừng commit.
+      <script>self.FIREBASE_APPCHECK_DEBUG_TOKEN = "<token-cua-may-ban>";</script>
   -->
-  <script>self.FIREBASE_APPCHECK_DEBUG_TOKEN = "00b89c8c-2636-491a-971c-35c1b6d19cdf";</script>
 
   <!--
     You can customize the "flutter_bootstrap.js" script.
