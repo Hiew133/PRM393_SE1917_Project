@@ -48,3 +48,6 @@ app.*.map.json
 
 # Worktree cục bộ của phiên Claude Code
 .claude/
+
+# Giá trị thật của App Check / reCAPTCHA — không commit
+appcheck.local.json

@@ -110,9 +110,14 @@ Cần một project Firebase của riêng bạn (Auth, Firestore, Storage, App C
 AI Logic) — chạy `flutterfire configure` để sinh lại `lib/firebase_options.dart`
 và `android/app/google-services.json`.
 
+App Check được bật Enforced, nên build/deploy cần truyền reCAPTCHA site key
+(web) hoặc debug token (APK sideload) — **không hard-code vào repo**. Các lệnh
+đầy đủ nằm trong [`nihon/BUILD.md`](nihon/BUILD.md).
+
 ```bash
-flutter build apk --release
-flutter build web && firebase deploy --only hosting
+cp appcheck.example.json appcheck.local.json   # rồi điền giá trị thật
+flutter build web --dart-define-from-file=appcheck.local.json
+flutter build apk --release --dart-define-from-file=appcheck.local.json
 ```
 
 > Đồ án môn **PRM393 – Mobile Programming**, lớp SE1917.
