@@ -56,7 +56,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   ChatSession _ensureChat() {
     if (_chat == null) {
-      final model = FirebaseAI.vertexAI().generativeModel(
+      final model = FirebaseAI.googleAI().generativeModel(
         model: ApiConfig.model,
         systemInstruction: Content.system(_systemInstruction),
       );

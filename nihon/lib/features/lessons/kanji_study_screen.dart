@@ -106,7 +106,7 @@ Tối đa 4 câu ngắn gọn. Trình bày đẹp mắt với icon sinh động.
 Trả về nội dung văn bản trực tiếp, không chứa markdown hay định dạng ```.
 ''';
 
-      final model = FirebaseAI.vertexAI().generativeModel(model: ApiConfig.model);
+      final model = FirebaseAI.googleAI().generativeModel(model: ApiConfig.model);
       final response = await model
           .generateContent([Content.text(prompt)])
           .timeout(const Duration(seconds: 30));

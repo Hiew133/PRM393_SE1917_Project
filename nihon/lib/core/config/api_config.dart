@@ -12,12 +12,15 @@ class ApiConfig {
   ApiConfig._();
 
   /// Model Gemini dùng cho Firebase AI Logic.
-  /// Có thể override khi build: `--dart-define=GEMINI_MODEL=gemini-2.5-flash-lite`
+  /// Có thể override khi build: `--dart-define=GEMINI_MODEL=gemini-3.6-flash`
   static const String model = String.fromEnvironment(
     'GEMINI_MODEL',
-    // Provider hiện tại là VERTEX AI (xem ai_conversation_service): phải dùng
-    // tên model tường minh — alias kiểu `gemini-flash-latest` chỉ tồn tại bên
-    // Gemini Developer API. Trên Vertex trả phí không còn lo 503 "high demand".
-    defaultValue: 'gemini-2.5-flash',
+    // Backend là GEMINI DEVELOPER API (googleAI), không phải Vertex AI: Vertex
+    // đòi bật billing, project đang ở gói free nên trả 403.
+    //
+    // Dùng alias `-latest` thay vì ghim phiên bản: gemini-2.5-flash đã bị gỡ
+    // ("no longer available to new users") và làm chết toàn bộ tính năng AI.
+    // Alias chỉ tồn tại bên Developer API - đúng backend đang dùng.
+    defaultValue: 'gemini-flash-latest',
   );
 }

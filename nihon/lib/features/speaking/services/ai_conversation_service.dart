@@ -97,7 +97,7 @@ class AiConversationService {
     // Vertex AI Gemini API (không phải Gemini Developer API): billing đi qua
     // Google Cloud nên dùng được credit dùng thử $300. Đổi lại googleAI() nếu
     // quay về Developer API (nhớ model alias *-latest chỉ có bên Developer API).
-    _model = FirebaseAI.vertexAI().generativeModel(
+    _model = FirebaseAI.googleAI().generativeModel(
       model: ApiConfig.model,
       systemInstruction: Content.system(_systemPrompt(scenario)),
       generationConfig: GenerationConfig(
@@ -221,6 +221,22 @@ class AiConversationService {
       throw AiServiceException(
         'Tài khoản Gemini đã HẾT CREDIT trả trước. Vào https://ai.studio/projects '
         '→ Billing để nạp thêm, hoặc chuyển project về gói miễn phí.',
+      );
+    }
+    // Vertex AI đòi bật billing. Lỗi này CŨNG là 403 nên phải bắt TRƯỚC nhánh
+    // App Check bên dưới - không thì một project ở gói free bị báo nhầm thành
+    // "App Check chưa cài" và người sửa đi tìm sai chỗ (đã dính một lần).
+    if (s.contains('requires billing') || s.contains('billing/enable')) {
+      throw AiServiceException(
+        'Project đang ở gói miễn phí nhưng code gọi Vertex AI (cần Blaze). '
+        'Dùng FirebaseAI.googleAI() thay cho vertexAI(), hoặc bật billing.',
+      );
+    }
+    // Model đã bị gỡ khỏi API - đổi tên model trong ApiConfig.
+    if (s.contains('no longer available') || s.contains('is not found for api')) {
+      throw AiServiceException(
+        'Model "${ApiConfig.model}" không còn tồn tại trên API. Đổi '
+        'ApiConfig.model (hoặc --dart-define=GEMINI_MODEL) sang model mới.',
       );
     }
     // Bị chặn bởi App Check / quyền (Firebase AI Logic cưỡng chế App Check từ
@@ -397,7 +413,7 @@ QUY TẮC CHUNG:
   /// (`Học viên: …` / `AI: …`). Dùng model MỘT LẦN riêng (không đụng phiên
   /// chat) với schema phân tích riêng.
   Future<SessionAnalysis> analyzeConversation(String transcript) async {
-    final model = FirebaseAI.vertexAI().generativeModel(
+    final model = FirebaseAI.googleAI().generativeModel(
       model: ApiConfig.model,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',

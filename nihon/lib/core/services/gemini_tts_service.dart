@@ -15,11 +15,14 @@ class GeminiTtsService {
 
   static final GeminiTtsService instance = GeminiTtsService._();
 
-  /// Model TTS (Vertex AI). Override khi build:
-  /// `--dart-define=GEMINI_TTS_MODEL=gemini-2.5-pro-tts`
+  /// Model TTS trên Gemini Developer API. Override khi build:
+  /// `--dart-define=GEMINI_TTS_MODEL=gemini-2.5-pro-preview-tts`
+  ///
+  /// Tên `gemini-2.5-flash-tts` (không có `-preview-`) chỉ tồn tại bên Vertex
+  /// AI; gọi qua Developer API sẽ 404.
   static const String _modelName = String.fromEnvironment(
     'GEMINI_TTS_MODEL',
-    defaultValue: 'gemini-2.5-flash-tts',
+    defaultValue: 'gemini-2.5-flash-preview-tts',
   );
 
   /// Giọng đọc prebuilt (Kore đọc ja-JP tự nhiên, giọng nữ).
@@ -41,7 +44,7 @@ class GeminiTtsService {
     if (cached != null) return cached;
 
     try {
-      _model ??= FirebaseAI.vertexAI().generativeModel(
+      _model ??= FirebaseAI.googleAI().generativeModel(
         model: _modelName,
         generationConfig: GenerationConfig(
           responseModalities: [ResponseModalities.audio],
